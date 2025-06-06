@@ -1,6 +1,7 @@
 import { timeDifference } from "@/utils/calculate-time";
 import { Confessions } from "@/utils/types";
-import { Heart, TextIcon } from "lucide-react-native";
+import { Link } from "expo-router";
+import { EyeIcon, Heart, TextIcon } from "lucide-react-native";
 import React from "react";
 import { Text, View } from "react-native";
 
@@ -24,8 +25,15 @@ const ConfessionCard = ({ confession }: { confession: Confessions }) => {
               <Text>{confession.comments}</Text>
             </View>
           </View>
-
-          {/* Time */}
+        </View>
+        {/* Time */}
+        <View className="flex-row justify-between items-center">
+          <Link href={`/confession/${confession.id}`}>
+            <View className="flex-row items-center gap-2">
+              <EyeIcon size={18} />
+              <Text>View</Text>
+            </View>
+          </Link>
           <Text>{timeDifference(confession.timestamp)} ago</Text>
         </View>
       </View>

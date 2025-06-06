@@ -1,4 +1,4 @@
-import { categories } from "@/constants/category";
+import { campuses } from "@/constants/campuses";
 import { RelativePathString, router, usePathname } from "expo-router";
 import { ArrowBigLeftDash } from "lucide-react-native";
 import React, { useState } from "react";
@@ -46,9 +46,9 @@ const NewConfession = () => {
             style={categoryStyle}
             onValueChange={(value) => setCategory(value)}
             placeholder={{ label: "Category", value: null }}
-            items={categories.map((category) => ({
-              label: category.name,
-              value: category.id,
+            items={campuses.map((campus) => ({
+              label: campus.name,
+              value: campus.id,
             }))}
           />
 

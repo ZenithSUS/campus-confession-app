@@ -3,14 +3,12 @@ import Filter from "@/components/filter";
 import Searchbar from "@/components/searchbar";
 import { confessions } from "@/constants/confessions";
 import { useRouter } from "expo-router";
-import { BellIcon } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
   Button,
   FlatList,
   RefreshControl,
   ScrollView,
-  TouchableOpacity,
   View,
 } from "react-native";
 
@@ -30,9 +28,6 @@ const Home = () => {
       {/* Header Section */}
       <View className="flex-row justify-between items-center mb-3">
         <Searchbar />
-        <TouchableOpacity className="flex-row items-center ml-2 gap-2">
-          <BellIcon size={22} color="#1C1C3A" />
-        </TouchableOpacity>
       </View>
 
       {/* Filter Bar */}
@@ -46,7 +41,7 @@ const Home = () => {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-        contentContainerStyle={{ minHeight: "100%", paddingBottom: 50 }}
+        contentContainerStyle={{ minHeight: "100%", paddingBottom: 20 }}
         showsVerticalScrollIndicator={false}
       >
         <FlatList
@@ -65,7 +60,7 @@ const Home = () => {
 
       <View className="bg-[#1C1C3A] p-3 rounded-full">
         <Button
-          title="Create Confession"
+          title="+ Create Confession"
           onPress={() => router.push("/new-confession")}
         />
       </View>

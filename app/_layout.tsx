@@ -24,7 +24,7 @@ export default function App() {
             }}
           />
           <Stack.Screen
-            name="confessions"
+            name="top-confessions"
             options={{
               animation: "slide_from_right",
             }}

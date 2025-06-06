@@ -1,4 +1,4 @@
-import { categories } from "@/constants/category";
+import { campuses } from "@/constants/campuses";
 import { ChevronDown } from "lucide-react-native";
 import React, { useState } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
@@ -15,9 +15,9 @@ export const Filter = () => {
           <RNPickerSelect
             value={filter}
             onValueChange={(value) => setFilter(value)}
-            items={categories.map((category) => ({
-              label: category.name,
-              value: category.id,
+            items={campuses.map((campus) => ({
+              label: campus.name,
+              value: campus.id,
             }))}
             style={styles}
             placeholder={{ label: "All", value: "All" }}

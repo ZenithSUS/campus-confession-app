@@ -43,7 +43,7 @@ const Routes = () => {
       </TouchableOpacity>
 
       <TouchableOpacity
-        onPress={() => navigateTo("/confessions")}
+        onPress={() => navigateTo("/top-confessions")}
         className="px-4 py-2 rounded-full"
         activeOpacity={0.7}
       >
