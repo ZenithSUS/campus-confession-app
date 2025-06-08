@@ -28,13 +28,13 @@ const ConfessionCard = ({ confession }: { confession: Confessions }) => {
         </View>
         {/* Time */}
         <View className="flex-row justify-between items-center">
-          <Link href={`/confession/${confession.id}`}>
+          <Link href={`/confession/${confession.$id}`}>
             <View className="flex-row items-center gap-2">
               <EyeIcon size={18} />
               <Text>View</Text>
             </View>
           </Link>
-          <Text>{timeDifference(confession.timestamp)} ago</Text>
+          <Text>{timeDifference(confession.$createdAt)} ago</Text>
         </View>
       </View>
     </View>

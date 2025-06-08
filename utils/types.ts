@@ -1,9 +1,11 @@
 export type Confessions = {
-  id: string;
+  $id: string;
   campus: string;
   text: string;
-  timestamp: string;
+  $createdAt: string;
   likes: number;
   comments: number;
   user: string;
 };
+
+export type Comments = {};

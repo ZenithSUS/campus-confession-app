@@ -1,4 +1,4 @@
-import { confessions } from "@/constants/confessions";
+import { useGetConfessionById } from "@/hooks/useConfession";
 import { timeDifference } from "@/utils/calculate-time";
 import { router, useLocalSearchParams } from "expo-router";
 import {
@@ -9,6 +9,7 @@ import {
 } from "lucide-react-native";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   RefreshControl,
   ScrollView,
   Text,
@@ -16,14 +17,14 @@ import {
   View,
 } from "react-native";
 
-const getConfession = (id: string) => {
-  return confessions.find((c) => c.id === id);
-};
-
 const Confession = () => {
   const { id } = useLocalSearchParams();
 
-  const confession = getConfession(id as string);
+  const {
+    data: confession,
+    isLoading,
+    error,
+  } = useGetConfessionById(id as string);
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = () => {
@@ -33,7 +34,21 @@ const Confession = () => {
     }, 2000);
   };
 
-  if (!confession) return <Text>Confession not found</Text>;
+  if (!confession)
+    return (
+      <View className="flex-1 px-4 py-2">
+        <View className="flex items-center justify-center">
+          <Text className="font-bold text-lg">Confession not found</Text>;
+        </View>
+      </View>
+    );
+
+  if (error)
+    return (
+      <View className="flex-1 items-center justify-center min-h-screen">
+        <Text className="font-bold">{error.message}</Text>;
+      </View>
+    );
 
   return (
     <View className="flex-1 bg-white px-4 py-2 gap-2">
@@ -49,34 +64,38 @@ const Confession = () => {
           <Text>Back</Text>
         </TouchableOpacity>
       </View>
-      {/* Confession Card Info */}
-      <View className="flex col gap-2 bg-gray-100 px-4 py-2 rounded-xl">
-        {/* User Info */}
-        <View className="flex-col gap-2">
-          <Text className="font-bold">{confession.user}</Text>
-          <Text>{confession.text}</Text>
-        </View>
 
-        {/* Actions */}
-        <View className="flex-row justify-between">
-          <View className="flex-row gap-2 items-center">
-            <View className="flex-row gap-2 items-center">
-              <Heart size={18} color="#6B7280" />
-              <Text>{confession.likes}</Text>
-            </View>
-
-            <View className="flex-row gap-2 items-center">
-              <TextIcon size={18} color="#6B7280" />
-              <Text>{confession.comments}</Text>
-            </View>
+      {isLoading ? (
+        <ActivityIndicator />
+      ) : (
+        <View className="flex col gap-2 bg-gray-100 px-4 py-2 rounded-xl">
+          {/* User Info */}
+          <View className="flex-col gap-2">
+            <Text className="font-bold">{confession.user}</Text>
+            <Text>{confession.text}</Text>
           </View>
 
-          {/* Time */}
-          <View className="flex-row gap-2 items-center">
-            <Text>{timeDifference(confession.timestamp)} ago</Text>
+          {/* Actions */}
+          <View className="flex-row justify-between">
+            <View className="flex-row gap-2 items-center">
+              <View className="flex-row gap-2 items-center">
+                <Heart size={18} color="#6B7280" />
+                <Text>{confession.likes}</Text>
+              </View>
+
+              <View className="flex-row gap-2 items-center">
+                <TextIcon size={18} color="#6B7280" />
+                <Text>{confession.comments}</Text>
+              </View>
+            </View>
+
+            {/* Time */}
+            <View className="flex-row gap-2 items-center">
+              <Text>{timeDifference(confession.$createdAt)} ago</Text>
+            </View>
           </View>
         </View>
-      </View>
+      )}
 
       {/* Comments */}
 

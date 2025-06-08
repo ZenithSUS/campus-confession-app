@@ -1,26 +1,28 @@
 import ConfessionCard from "@/components/confession-card";
 import Filter from "@/components/filter";
 import Searchbar from "@/components/searchbar";
-import { confessions } from "@/constants/confessions";
+import { useGetConfession } from "@/hooks/useConfession";
 import { useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
+  ActivityIndicator,
   Button,
   FlatList,
   RefreshControl,
   ScrollView,
+  Text,
   View,
 } from "react-native";
 
 const Home = () => {
+  const { data: confessions, isLoading, refetch, error } = useGetConfession();
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 2000);
+
+    refetch().then(() => setRefreshing(false));
   }, []);
 
   return (
@@ -35,6 +37,14 @@ const Home = () => {
         <Filter />
       </View>
 
+      {error && (
+        <View className="flex-1">
+          <Text className="text-[#FF0000] text-center">
+            Something went wrong: {error.message}
+          </Text>
+        </View>
+      )}
+
       {/* Feed */}
       <ScrollView
         className="flex-1"
@@ -44,18 +54,22 @@ const Home = () => {
         contentContainerStyle={{ minHeight: "100%", paddingBottom: 20 }}
         showsVerticalScrollIndicator={false}
       >
-        <FlatList
-          data={confessions}
-          keyExtractor={(item) => item.id.toString()}
-          showsHorizontalScrollIndicator={false}
-          showsVerticalScrollIndicator={false}
-          nestedScrollEnabled={true}
-          scrollEnabled={false}
-          numColumns={1}
-          renderItem={({ item }) => (
-            <ConfessionCard confession={item} key={item.id} />
-          )}
-        />
+        {isLoading ? (
+          <ActivityIndicator size="large" color={"#1C1C3A"} />
+        ) : (
+          <FlatList
+            data={confessions}
+            keyExtractor={(item) => item.$id.toString()}
+            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled={true}
+            scrollEnabled={false}
+            numColumns={1}
+            renderItem={({ item }) => (
+              <ConfessionCard confession={item} key={item.$id} />
+            )}
+          />
+        )}
       </ScrollView>
 
       <View className="bg-[#1C1C3A] p-3 rounded-full">
