@@ -21,9 +21,18 @@ const Home = () => {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-
-    refetch().then(() => setRefreshing(false));
+    refetch().finally(() => setRefreshing(false));
   }, []);
+
+  if (error) {
+    return (
+      <View className="flex-1">
+        <Text className="text-[#FF0000] text-center w-full">
+          Something went wrong: {error.message}
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-white px-4 py-2">
@@ -37,14 +46,6 @@ const Home = () => {
         <Filter />
       </View>
 
-      {error && (
-        <View className="flex-1">
-          <Text className="text-[#FF0000] text-center">
-            Something went wrong: {error.message}
-          </Text>
-        </View>
-      )}
-
       {/* Feed */}
       <ScrollView
         className="flex-1"
@@ -54,7 +55,7 @@ const Home = () => {
         contentContainerStyle={{ minHeight: "100%", paddingBottom: 20 }}
         showsVerticalScrollIndicator={false}
       >
-        {isLoading ? (
+        {isLoading && !refreshing ? (
           <ActivityIndicator size="large" color={"#1C1C3A"} />
         ) : (
           <FlatList

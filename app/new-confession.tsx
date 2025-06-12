@@ -1,7 +1,10 @@
 import { campuses } from "@/constants/campuses";
+import { useCreateConfession } from "@/hooks/useConfession";
+import { CreateConfession } from "@/utils/types";
 import { RelativePathString, router, usePathname } from "expo-router";
 import { ArrowBigLeftDash } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useTransition } from "react";
+import { Controller, useForm } from "react-hook-form";
 import {
   Button,
   StyleSheet,
@@ -13,8 +16,24 @@ import {
 import Picker from "react-native-picker-select";
 
 const NewConfession = () => {
-  const [category, setCategory] = useState("");
   const pathname = usePathname();
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<CreateConfession>();
+  const { mutateAsync: createConfession } = useCreateConfession();
+  const submitConfession = (data: CreateConfession) => {
+    data["user"] = "John Doe";
+
+    startTransition(() => {
+      createConfession(data);
+    });
+
+    navigateTo("/");
+  };
+
+  const [isPending, startTransition] = useTransition();
 
   const navigateTo = (path: string) => {
     if (pathname === path) return;
@@ -41,38 +60,65 @@ const NewConfession = () => {
       {/* Content */}
       <View className="bg-gray-100 rounded-xl">
         <View className="flex-col gap-2 p-4">
-          <Picker
-            value={category}
-            style={categoryStyle}
-            onValueChange={(value) => setCategory(value)}
-            placeholder={{ label: "Category", value: null }}
-            items={campuses.map((campus) => ({
-              label: campus.name,
-              value: campus.id,
-            }))}
+          <Controller
+            control={control}
+            name="campus"
+            rules={{ required: true }}
+            render={({ field: { onChange, value } }) => (
+              <Picker
+                value={value}
+                style={categoryStyle}
+                onValueChange={onChange}
+                placeholder={{ label: "Category", value: null }}
+                items={campuses.map((campus) => ({
+                  label: campus.name,
+                  value: campus.id,
+                }))}
+              />
+            )}
           />
+
+          {errors.campus && (
+            <Text style={{ color: "red" }}>Category is required</Text>
+          )}
 
           <Text className="font-bold text-lg">Confession</Text>
-          <TextInput
-            className="bg-white px-3 py-2 rounded-xl"
-            numberOfLines={5}
-            multiline={true}
-            placeholder="Confession..."
+          <Controller
+            control={control}
+            name="text"
+            rules={{ required: true }}
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                className="bg-white px-3 py-2 rounded-xl"
+                numberOfLines={5}
+                multiline={true}
+                placeholder="Confession..."
+                onBlur={onBlur}
+                value={value}
+                onChangeText={onChange}
+              />
+            )}
           />
 
-          <View className="flex-row  items-center gap-2 py-2">
+          {errors.text && (
+            <Text style={{ color: "red" }}>Confession is required</Text>
+          )}
+
+          <View className="flex-row items-center gap-2 py-2">
             <TouchableOpacity activeOpacity={0.7}>
               <Button
                 title="Post Anonymously"
-                onPress={() => console.log(category)}
+                disabled={isPending}
+                onPress={handleSubmit(submitConfession)}
               />
             </TouchableOpacity>
 
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => navigateTo("/")}
-            >
-              <Button title="Cancel" />
+            <TouchableOpacity activeOpacity={0.7}>
+              <Button
+                title="Cancel"
+                onPress={() => navigateTo("/")}
+                disabled={isPending}
+              />
             </TouchableOpacity>
           </View>
         </View>

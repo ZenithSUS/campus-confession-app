@@ -1,9 +1,10 @@
 import {
+  createConfession,
   deleteConfession,
   getConfession,
   getConfessions,
 } from "@/services/confession";
-import { Confessions } from "@/utils/types";
+import { Confessions, CreateConfession } from "@/utils/types";
 import {
   QueryObserverResult,
   UseBaseMutationResult,
@@ -32,6 +33,22 @@ export const useGetConfessionById = (
       const { data } = await getConfession(id);
       return data;
     },
+  });
+};
+
+export const useCreateConfession = (): UseBaseMutationResult<
+  AxiosResponse<CreateConfession>,
+  unknown,
+  CreateConfession
+> => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateConfession) => createConfession(data),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: ["confessions", "confession"],
+      }),
   });
 };
 

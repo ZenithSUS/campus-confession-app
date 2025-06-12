@@ -8,4 +8,10 @@ export type Confessions = {
   user: string;
 };
 
+export type CreateConfession = {
+  campus: string;
+  text: string;
+  user: string;
+};
+
 export type Comments = {};

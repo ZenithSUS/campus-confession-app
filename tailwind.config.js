@@ -9,6 +9,7 @@ module.exports = {
         primary: "#E94F8B",
         "bg-primary": "#F2F2F7",
         "accent-1": "#A78BFA",
+        "error": "#f87171"
       }
     },
   },
