@@ -9,8 +9,12 @@ const ConfessionCard = ({ confession }: { confession: Confessions }) => {
   return (
     <View className="flex-1 gap-2 p-4">
       <View className="flex-col bg-gray-100 shadow gap-2 p-4 rounded-xl">
-        <Text className="font-bold">{confession.user}</Text>
-        <Text>{confession.text}</Text>
+        <View className="flex-row justify-between items-center">
+          <Text className="font-bold">{confession.user}</Text>
+          <Text>{confession.campus}</Text>
+        </View>
+
+        <Text className="py-2">{confession.text}</Text>
 
         {/* Actions */}
         <View className="flex-row justify-between">

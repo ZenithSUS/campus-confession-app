@@ -1,4 +1,5 @@
 import { campuses } from "@/constants/campuses";
+import { useSession } from "@/context/session";
 import { useCreateConfession } from "@/hooks/useConfession";
 import { CreateConfession } from "@/utils/types";
 import { RelativePathString, router, usePathname } from "expo-router";
@@ -17,20 +18,30 @@ import Picker from "react-native-picker-select";
 
 const NewConfession = () => {
   const pathname = usePathname();
+  const { session } = useSession();
   const {
     control,
     handleSubmit,
     formState: { errors },
-  } = useForm<CreateConfession>();
+  } = useForm<CreateConfession>({
+    defaultValues: {
+      user: session.nickname,
+      userId: session.$id,
+    },
+  });
   const { mutateAsync: createConfession } = useCreateConfession();
   const submitConfession = (data: CreateConfession) => {
-    data["user"] = "John Doe";
-
-    startTransition(() => {
-      createConfession(data);
-    });
-
-    navigateTo("/");
+    
+    try {
+      
+      startTransition( async () => {
+        await createConfession(data);
+      });
+  
+      navigateTo("/");
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   const [isPending, startTransition] = useTransition();
@@ -60,6 +71,13 @@ const NewConfession = () => {
       {/* Content */}
       <View className="bg-gray-100 rounded-xl">
         <View className="flex-col gap-2 p-4">
+        
+        <View className="flex-row gap-2 justify-center items-center">
+          <Text className="text-lg">Anonymous Name:</Text>
+          <Text className="font-bold text-lg">{session?.nickname}</Text>
+        </View>
+
+          <Text className="font-bold text-md">Category</Text>
           <Controller
             control={control}
             name="campus"
@@ -82,7 +100,7 @@ const NewConfession = () => {
             <Text style={{ color: "red" }}>Category is required</Text>
           )}
 
-          <Text className="font-bold text-lg">Confession</Text>
+          <Text className="font-bold text-md">Confession</Text>
           <Controller
             control={control}
             name="text"
@@ -107,7 +125,7 @@ const NewConfession = () => {
           <View className="flex-row items-center gap-2 py-2">
             <TouchableOpacity activeOpacity={0.7}>
               <Button
-                title="Post Anonymously"
+                title="Post Confession"
                 disabled={isPending}
                 onPress={handleSubmit(submitConfession)}
               />

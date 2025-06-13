@@ -1,3 +1,8 @@
+export type Session = {
+  $id: string;
+  nickname: string;
+}
+
 export type Confessions = {
   $id: string;
   campus: string;
@@ -12,6 +17,7 @@ export type CreateConfession = {
   campus: string;
   text: string;
   user: string;
+  userId: string;
 };
 
 export type Comments = {};

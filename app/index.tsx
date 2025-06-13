@@ -24,11 +24,13 @@ const Home = () => {
     refetch().finally(() => setRefreshing(false));
   }, []);
 
+
   if (error) {
     return (
-      <View className="flex-1">
-        <Text className="text-[#FF0000] text-center w-full">
+      <View className="flex-1 items-center justify-center min-h-screen">
+        <Text className="text-error text-center w-full">
           Something went wrong: {error.message}
+          <Button onPress={onRefresh} title="Retry" />
         </Text>
       </View>
     );
@@ -45,6 +47,11 @@ const Home = () => {
       <View className="mb-2">
         <Filter />
       </View>
+
+      { !isLoading && !confessions?.length && !error && 
+      <View className="flex-1 items-center justify-center min-h-screen">
+        <Text className="font-bold">No confessions found</Text>
+      </View>}
 
       {/* Feed */}
       <ScrollView

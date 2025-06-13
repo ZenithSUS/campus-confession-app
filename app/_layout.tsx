@@ -1,4 +1,5 @@
 import Routes from "@/components/routes";
+import { SessionProvider } from "@/context/session";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
@@ -8,7 +9,8 @@ const queryClient = new QueryClient();
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <SessionProvider>
+      <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
         <SafeAreaView className="flex-1 bg-white">
           <Routes />
@@ -48,6 +50,7 @@ export default function App() {
           </Stack>
         </SafeAreaView>
       </SafeAreaProvider>
-    </QueryClientProvider>
+      </QueryClientProvider>
+    </SessionProvider>
   );
 }

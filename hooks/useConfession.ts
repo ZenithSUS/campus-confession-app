@@ -47,8 +47,11 @@ export const useCreateConfession = (): UseBaseMutationResult<
     mutationFn: (data: CreateConfession) => createConfession(data),
     onSuccess: () =>
       queryClient.invalidateQueries({
-        queryKey: ["confessions", "confession"],
+        queryKey: ["confessions"],
       }),
+    onError: () => {
+      throw new Error("There is something wrong with your confession");
+    }
   });
 };
 
