@@ -2,85 +2,152 @@ import ConfessionCard from "@/components/confession-card";
 import Filter from "@/components/filter";
 import Searchbar from "@/components/searchbar";
 import { useGetConfession } from "@/hooks/useConfession";
+import { Confessions } from "@/utils/types";
 import { useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Button,
   FlatList,
   RefreshControl,
-  ScrollView,
   Text,
   View,
 } from "react-native";
 
 const Home = () => {
-  const { data: confessions, isLoading, refetch, error } = useGetConfession();
+  const {
+    data: fetchedconfessions,
+    isLoading,
+    refetch,
+    error,
+  } = useGetConfession();
   const [refreshing, setRefreshing] = useState(false);
+  const [filteredConfessions, setFilteredConfessions] = useState<Confessions[]>(
+    []
+  );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
   const router = useRouter();
+
+  useEffect(() => {
+    if (fetchedconfessions) {
+      setFilteredConfessions(fetchedconfessions);
+    }
+  }, [fetchedconfessions]);
+
+  const displayedConfessions = useMemo(() => {
+    let result = filteredConfessions;
+
+    if (searchQuery) {
+      result = result.filter(
+        (confession) =>
+          confession.text?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          confession.campus
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          confession.user?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    if (filterCategory) {
+      if (filterCategory === "All") {
+        return filteredConfessions;
+      }
+
+      result = result.filter(
+        (confession) => confession.campus === filterCategory
+      );
+    }
+
+    return result;
+  }, [filteredConfessions, searchQuery, filterCategory]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     refetch().finally(() => setRefreshing(false));
+  }, [refetch]);
+
+  const renderConfessionItem = useCallback(
+    ({ item }: { item: Confessions }) => <ConfessionCard confession={item} />,
+    []
+  );
+
+  const keyExtractor = useCallback(
+    (item: Confessions) => item.$id.toString(),
+    []
+  );
+
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query);
   }, []);
 
+  const handleFilter = useCallback((category: string) => {
+    setFilterCategory(category);
+  }, []);
+
+  if (isLoading && !refreshing) {
+    return (
+      <View className="flex-1 items-center justify-center min-h-screen">
+        <ActivityIndicator size="large" color={"#1C1C3A"} />
+      </View>
+    );
+  }
 
   if (error) {
     return (
       <View className="flex-1 items-center justify-center min-h-screen">
-        <Text className="text-error text-center w-full">
-          Something went wrong: {error.message}
+        <View className="flex-col items-center gap-2">
+          <Text className="text-error text-center w-full">
+            Something went wrong: {error.message}
+          </Text>
           <Button onPress={onRefresh} title="Retry" />
-        </Text>
+        </View>
       </View>
     );
   }
 
   return (
     <View className="flex-1 bg-white px-4 py-2">
-      {/* Header Section */}
-      <View className="flex-row justify-between items-center mb-3">
-        <Searchbar />
+      <View className="flex-row items-center mb-3 gap-2">
+        <View className="flex-1">
+          <Searchbar onSearch={handleSearch} />
+        </View>
+
+        <View>
+          <Filter onFilter={handleFilter} />
+        </View>
       </View>
 
-      {/* Filter Bar */}
-      <View className="mb-2">
-        <Filter />
-      </View>
-
-      { !isLoading && !confessions?.length && !error && 
-      <View className="flex-1 items-center justify-center min-h-screen">
-        <Text className="font-bold">No confessions found</Text>
-      </View>}
-
-      {/* Feed */}
-      <ScrollView
-        className="flex-1"
+      <FlatList
+        data={displayedConfessions}
+        keyExtractor={keyExtractor}
+        renderItem={renderConfessionItem}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-        contentContainerStyle={{ minHeight: "100%", paddingBottom: 20 }}
+        ListEmptyComponent={
+          !isLoading ? (
+            <View className="flex-1 items-center justify-center min-h-[400px]">
+              <Text className="font-bold text-lg">
+                {searchQuery || filterCategory
+                  ? "No confessions match your search"
+                  : "No confessions found yet"}
+              </Text>
+            </View>
+          ) : null
+        }
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingBottom: 20,
+        }}
         showsVerticalScrollIndicator={false}
-      >
-        {isLoading && !refreshing ? (
-          <ActivityIndicator size="large" color={"#1C1C3A"} />
-        ) : (
-          <FlatList
-            data={confessions}
-            keyExtractor={(item) => item.$id.toString()}
-            showsHorizontalScrollIndicator={false}
-            showsVerticalScrollIndicator={false}
-            nestedScrollEnabled={true}
-            scrollEnabled={false}
-            numColumns={1}
-            renderItem={({ item }) => (
-              <ConfessionCard confession={item} key={item.$id} />
-            )}
-          />
-        )}
-      </ScrollView>
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        windowSize={21}
+        initialNumToRender={10}
+      />
 
-      <View className="bg-[#1C1C3A] p-3 rounded-full">
+      <View className="bg-[#1C1C3A] p-3 rounded-full mt-4">
         <Button
           title="+ Create Confession"
           onPress={() => router.push("/new-confession")}

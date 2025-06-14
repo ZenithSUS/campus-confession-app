@@ -1,7 +1,7 @@
 export type Session = {
   $id: string;
   nickname: string;
-}
+};
 
 export type Confessions = {
   $id: string;
@@ -20,4 +20,24 @@ export type CreateConfession = {
   userId: string;
 };
 
-export type Comments = {};
+export type Likes = {
+  $id: string;
+  confessionId: string;
+  userId: string;
+};
+
+export type Comments = {
+  $id: string;
+  confessionId: string;
+  content: string;
+  $createdAt: string;
+  author: string;
+  likes: number;
+  childComments: number;
+};
+
+export type CreateComment = {
+  content: string;
+  confession: string;
+  author: string;
+};

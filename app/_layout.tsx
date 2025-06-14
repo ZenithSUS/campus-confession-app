@@ -11,45 +11,45 @@ export default function App() {
   return (
     <SessionProvider>
       <QueryClientProvider client={queryClient}>
-      <SafeAreaProvider>
-        <SafeAreaView className="flex-1 bg-white">
-          <Routes />
+        <SafeAreaProvider>
+          <SafeAreaView className="flex-1 bg-white">
+            <Routes />
 
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              title: "Campus Confession",
-              animation: "none",
-              gestureEnabled: false,
-            }}
-          >
-            <Stack.Screen
-              name="index"
-              options={{
-                animation: "slide_from_right",
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                title: "Campus Confession",
+                animation: "none",
+                gestureEnabled: false,
               }}
-            />
-            <Stack.Screen
-              name="top-confessions"
-              options={{
-                animation: "slide_from_right",
-              }}
-            />
-            <Stack.Screen
-              name="new-confession"
-              options={{
-                animation: "slide_from_right",
-              }}
-            />
-            <Stack.Screen
-              name="confession/[id]"
-              options={{
-                animation: "slide_from_right",
-              }}
-            />
-          </Stack>
-        </SafeAreaView>
-      </SafeAreaProvider>
+            >
+              <Stack.Screen
+                name="index"
+                options={{
+                  animation: "slide_from_right",
+                }}
+              />
+              <Stack.Screen
+                name="top-confessions"
+                options={{
+                  animation: "slide_from_right",
+                }}
+              />
+              <Stack.Screen
+                name="new-confession"
+                options={{
+                  animation: "slide_from_right",
+                }}
+              />
+              <Stack.Screen
+                name="confession/[id]"
+                options={{
+                  animation: "slide_from_right",
+                }}
+              />
+            </Stack>
+          </SafeAreaView>
+        </SafeAreaProvider>
       </QueryClientProvider>
     </SessionProvider>
   );

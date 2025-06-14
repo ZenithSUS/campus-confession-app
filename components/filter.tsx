@@ -1,20 +1,21 @@
 import { campuses } from "@/constants/campuses";
-import { ChevronDown } from "lucide-react-native";
-import React, { useState } from "react";
+import React from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
 import RNPickerSelect from "react-native-picker-select";
 
-export const Filter = () => {
-  const [filter, setFilter] = useState("All");
-
+export const Filter = ({
+  onFilter,
+}: {
+  onFilter: (category: string) => void;
+}) => {
   return (
     <View className="w-full p-3 rounded-xl">
       <View className="flex-row items-center justify-between">
-        <Text className="font-bold text-lg mr-2">Filter:</Text>
+        <Text className="font-bold text-lg mr-2">Campus:</Text>
         <View className="flex-1 relative">
           <RNPickerSelect
-            value={filter}
-            onValueChange={(value) => setFilter(value)}
+            value={"All"}
+            onValueChange={(value) => onFilter(value)}
             items={campuses.map((campus) => ({
               label: campus.name,
               value: campus.id,
@@ -22,7 +23,6 @@ export const Filter = () => {
             style={styles}
             placeholder={{ label: "All", value: "All" }}
             useNativeAndroidPickerStyle={false}
-            Icon={() => <ChevronDown size={18} color="#6B7280" />}
           />
         </View>
       </View>

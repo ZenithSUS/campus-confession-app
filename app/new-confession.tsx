@@ -31,14 +31,10 @@ const NewConfession = () => {
   });
   const { mutateAsync: createConfession } = useCreateConfession();
   const submitConfession = (data: CreateConfession) => {
-    
     try {
-      
-      startTransition( async () => {
+      startTransition(async () => {
         await createConfession(data);
       });
-  
-      navigateTo("/");
     } catch (error) {
       console.log(error);
     }
@@ -71,13 +67,12 @@ const NewConfession = () => {
       {/* Content */}
       <View className="bg-gray-100 rounded-xl">
         <View className="flex-col gap-2 p-4">
-        
-        <View className="flex-row gap-2 justify-center items-center">
-          <Text className="text-lg">Anonymous Name:</Text>
-          <Text className="font-bold text-lg">{session?.nickname}</Text>
-        </View>
+          <View className="flex-row gap-2">
+            <Text className="text-lg">Anonymous Name:</Text>
+            <Text className="font-bold text-lg">{session?.nickname}</Text>
+          </View>
 
-          <Text className="font-bold text-md">Category</Text>
+          <Text className="font-bold text-md">Campus</Text>
           <Controller
             control={control}
             name="campus"
@@ -87,7 +82,7 @@ const NewConfession = () => {
                 value={value}
                 style={categoryStyle}
                 onValueChange={onChange}
-                placeholder={{ label: "Category", value: null }}
+                placeholder={{ label: "Campus", value: null }}
                 items={campuses.map((campus) => ({
                   label: campus.name,
                   value: campus.id,
@@ -136,6 +131,7 @@ const NewConfession = () => {
                 title="Cancel"
                 onPress={() => navigateTo("/")}
                 disabled={isPending}
+                color={"red"}
               />
             </TouchableOpacity>
           </View>

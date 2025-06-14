@@ -7,8 +7,8 @@ import { Text, View } from "react-native";
 
 const ConfessionCard = ({ confession }: { confession: Confessions }) => {
   return (
-    <View className="flex-1 gap-2 p-4">
-      <View className="flex-col bg-gray-100 shadow gap-2 p-4 rounded-xl">
+    <View className="flex-1 px-2 py-4">
+      <View className="flex-col shadow gap-2 p-4 rounded-xl">
         <View className="flex-row justify-between items-center">
           <Text className="font-bold">{confession.user}</Text>
           <Text>{confession.campus}</Text>
