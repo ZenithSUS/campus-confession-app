@@ -36,23 +36,14 @@ export const useGetConfessionById = (
   });
 };
 
-export const useCreateConfession = (): UseBaseMutationResult<
-  AxiosResponse<CreateConfession>,
-  unknown,
-  CreateConfession
-> => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: CreateConfession) => createConfession(data),
-    onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: ["confessions"],
-      }),
-    onError: () => {
-      throw new Error("There is something wrong with your confession");
-    }
-  });
+export const useCreateConfession = async (
+  data: CreateConfession
+): Promise<AxiosResponse<CreateConfession>> => {
+  try {
+    return await createConfession(data);
+  } catch (error) {
+    throw new Error("Failed to create confession");
+  }
 };
 
 export const useDeleteConfession = (): UseBaseMutationResult<

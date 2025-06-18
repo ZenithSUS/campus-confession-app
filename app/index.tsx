@@ -2,6 +2,7 @@ import ConfessionCard from "@/components/confession-card";
 import Filter from "@/components/filter";
 import Searchbar from "@/components/searchbar";
 import { useGetConfession } from "@/hooks/useConfession";
+import { shuffleData } from "@/utils/shuffle";
 import { Confessions } from "@/utils/types";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -31,7 +32,7 @@ const Home = () => {
 
   useEffect(() => {
     if (fetchedconfessions) {
-      setFilteredConfessions(fetchedconfessions);
+      setFilteredConfessions(shuffleData(fetchedconfessions as Confessions[]));
     }
   }, [fetchedconfessions]);
 
@@ -85,7 +86,7 @@ const Home = () => {
     setFilterCategory(category);
   }, []);
 
-  if (isLoading && !refreshing) {
+  if (isLoading || refreshing) {
     return (
       <View className="flex-1 items-center justify-center min-h-screen">
         <ActivityIndicator size="large" color={"#1C1C3A"} />
@@ -93,12 +94,12 @@ const Home = () => {
     );
   }
 
-  if (error) {
+  if (error || !fetchedconfessions) {
     return (
       <View className="flex-1 items-center justify-center min-h-screen">
         <View className="flex-col items-center gap-2">
           <Text className="text-error text-center w-full">
-            Something went wrong: {error.message}
+            Something went wrong: {error?.message}
           </Text>
           <Button onPress={onRefresh} title="Retry" />
         </View>

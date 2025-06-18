@@ -2,7 +2,7 @@ import axios from "axios";
 
 const baseUrl =
   process.env.NODE_ENV === "development"
-    ? process.env.EXPO_PUBLIC_API_BASE_URL_LOCAL
+    ? "http://localhost:3030/api"
     : process.env.EXPO_PUBLIC_API_BASE_URL;
 
 console.log(process.env.NODE_ENV);
@@ -11,21 +11,10 @@ if (!baseUrl) {
   throw new Error("PUBLIC_EXPO_API_BASE_URL is not defined");
 }
 
-console.log("API Base URL:", baseUrl);
-
 const axiosClient = axios.create({
   baseURL: baseUrl,
   timeout: 1000000,
 });
-
-axiosClient.interceptors.request.use(
-  (config) => {
-    const fullUrl = `${config.baseURL || ""}${config.url || ""}`;
-    console.log("Request URL:", fullUrl);
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
 
 axiosClient.interceptors.response.use(
   (response) => response,

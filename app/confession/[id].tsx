@@ -53,6 +53,10 @@ const Confession = () => {
     },
   });
 
+  const isLiked = confession?.likesData
+    .map((like) => like.userId)
+    .includes(session.$id);
+
   useEffect(() => {
     const showSubscription = Keyboard.addListener("keyboardDidShow", () => {
       setKeyboardOffSet(Platform.OS === "ios" ? 80 : 100);
@@ -128,20 +132,20 @@ const Confession = () => {
           </TouchableOpacity>
         </View>
 
-        <View className="flex col gap-2 shadow px-4 py-2 rounded-xl">
+        <View className="flex col gap-2 shadow p-5 rounded-xl">
           <View className="flex-col gap-2 py-2">
             <Text className="font-bold">{confession.user}</Text>
             <Text>{confession.text}</Text>
           </View>
 
           <View className="flex-row justify-between">
-            <View className="flex-row gap-2 items-center">
-              <Heart size={18} color="#6B7280" />
-              <Text>{confession.likes}</Text>
+            <TouchableOpacity className="flex-row gap-2 items-center">
+              <Heart size={18} color={isLiked ? "red" : "#6B7280"} />
+              <Text>{confession.likesLength}</Text>
 
               <TextIcon size={18} color="#6B7280" />
-              <Text>{confession.comments}</Text>
-            </View>
+              <Text>{confession.commentsLength}</Text>
+            </TouchableOpacity>
 
             <View className="flex-row gap-2 items-center">
               <Text>{timeDifference(confession.$createdAt)} ago</Text>

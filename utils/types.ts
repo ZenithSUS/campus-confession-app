@@ -8,8 +8,10 @@ export type Confessions = {
   campus: string;
   text: string;
   $createdAt: string;
-  likes: number;
-  comments: number;
+  likesData: Likes[];
+  commentsData: Comments[];
+  likesLength: number;
+  commentsLength: number;
   user: string;
 };
 
@@ -25,6 +27,8 @@ export type Likes = {
   confessionId: string;
   userId: string;
 };
+
+export type CreateLike = Omit<Likes, "$id">;
 
 export type Comments = {
   $id: string;

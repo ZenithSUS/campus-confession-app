@@ -55,7 +55,7 @@ const Routes = () => {
           className="px-4 py-2 rounded-full"
           activeOpacity={0.7}
         >
-          <NotebookIcon size={24} color={getIconColor("/confessions")} />
+          <NotebookIcon size={24} color={getIconColor("/top-confessions")} />
         </TouchableOpacity>
 
         <TouchableOpacity

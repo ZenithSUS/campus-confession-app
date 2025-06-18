@@ -2,6 +2,7 @@ import { campuses } from "@/constants/campuses";
 import { useSession } from "@/context/session";
 import { useCreateConfession } from "@/hooks/useConfession";
 import { CreateConfession } from "@/utils/types";
+import { useQueryClient } from "@tanstack/react-query";
 import { RelativePathString, router, usePathname } from "expo-router";
 import { ArrowBigLeftDash } from "lucide-react-native";
 import React, { useTransition } from "react";
@@ -19,6 +20,7 @@ import Picker from "react-native-picker-select";
 const NewConfession = () => {
   const pathname = usePathname();
   const { session } = useSession();
+  const queryClient = useQueryClient();
   const {
     control,
     handleSubmit,
@@ -29,12 +31,14 @@ const NewConfession = () => {
       userId: session.$id,
     },
   });
-  const { mutateAsync: createConfession } = useCreateConfession();
   const submitConfession = (data: CreateConfession) => {
     try {
       startTransition(async () => {
-        await createConfession(data);
+        await useCreateConfession(data);
+        queryClient.invalidateQueries({ queryKey: ["confessions"] });
       });
+      
+      if(!isPending) router.replace("/");
     } catch (error) {
       console.log(error);
     }

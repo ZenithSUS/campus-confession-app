@@ -46,7 +46,7 @@ export const SessionProvider = ({
 
   useEffect(() => {
     checkAuth();
-  }, [setSession, checkAuth]);
+  }, [setSession]);
 
   return (
     <SessionContext.Provider value={{ session, setSession }}>

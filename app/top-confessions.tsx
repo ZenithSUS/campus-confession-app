@@ -2,7 +2,7 @@ import ConfessionCard from "@/components/confession-card";
 import { useGetConfession } from "@/hooks/useConfession";
 import { Confessions } from "@/utils/types";
 import { router } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Button,
@@ -14,14 +14,31 @@ import {
 
 const TopConfessions = () => {
   const [refresh, setRefresh] = useState(false);
-
+  const [topConfessions, setTopConfessions] = useState<Confessions[]>([]);
   const { data: confessions, isLoading, refetch } = useGetConfession();
 
-  // Memoize sorted confessions to prevent re-sorting on every render
-  const topConfessions = useMemo(() => {
-    if (!confessions) return [];
-    return [...confessions].sort((a, b) => b.likes - a.likes).slice(0, 5);
+  useEffect(() => {
+    if (confessions) {
+      setTopConfessions(
+        confessions.sort((a, b) => b.likesLength - a.likesLength).slice(0, 5)
+      );
+    }
   }, [confessions]);
+
+  const renderItem = useCallback(
+    ({ item }: { item: Confessions }) => <ConfessionCard confession={item} />,
+    []
+  );
+
+  const keyExtractor = useCallback(
+    (item: Confessions) => item.$id.toString(),
+    []
+  );
+
+  const onRefresh = () => {
+    setRefresh(true);
+    refetch().then(() => setRefresh(false));
+  };
 
   if (isLoading) {
     return (
@@ -38,21 +55,6 @@ const TopConfessions = () => {
       </View>
     );
   }
-
-  // Fixed: renderItem should receive the item parameter
-  const renderItem = useCallback(({ item }: { item: Confessions }) => {
-    return <ConfessionCard confession={item} />;
-  }, []);
-
-  // Fixed: keyExtractor should receive the item parameter
-  const keyExtractor = useCallback((item: Confessions) => {
-    return item.$id.toString();
-  }, []);
-
-  const onRefresh = () => {
-    setRefresh(true);
-    refetch().then(() => setRefresh(false));
-  };
 
   return (
     <View className="flex-1 bg-white px-4 py-2">
