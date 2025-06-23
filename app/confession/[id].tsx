@@ -1,5 +1,7 @@
 import CommentCard from "@/components/comment-card";
+import { useComment } from "@/context/comment";
 import { useSession } from "@/context/session";
+import { useCreateChildenComment } from "@/hooks/useChildrenComment";
 import {
   useCreateComment,
   useGetCommentsByConfession,
@@ -33,6 +35,7 @@ import {
 
 const Confession = () => {
   const { id } = useLocalSearchParams();
+  const { state, dispatch } = useComment();
   const {
     data: confession,
     isLoading: confessionLoading,
@@ -46,16 +49,18 @@ const Confession = () => {
   const [isPending, startTransition] = useTransition();
   const { session } = useSession();
   const { mutateAsync: createComment } = useCreateComment();
-  const { control, handleSubmit } = useForm<CreateComment>({
+  const { mutateAsync: createChildrenComment } = useCreateChildenComment();
+  const { control, handleSubmit, reset } = useForm<CreateComment>({
     defaultValues: {
-      confession: id as string,
-      author: session.nickname,
+      confession: "",
+      author: "",
+      content: "",
     },
   });
 
-  const isLiked = confession?.likesData
-    .map((like) => like.userId)
-    .includes(session.$id);
+  const isLiked =
+    confession?.likesData.map((like) => like.userId).includes(session.$id) ||
+    false;
 
   useEffect(() => {
     const showSubscription = Keyboard.addListener("keyboardDidShow", () => {
@@ -72,12 +77,39 @@ const Confession = () => {
     };
   });
 
+  useEffect(() => {
+    if (id && typeof id === "string") {
+      dispatch({ type: "SET_ID", payload: id.toString() });
+      dispatch({ type: "SET_TYPE", payload: "comment" });
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (id && session?.nickname) {
+      reset({
+        confession: id as string,
+        author: session.nickname,
+        content: "",
+      });
+    }
+  }, [id, session.nickname, reset]);
+
   const submitComment = (data: CreateComment) => {
     try {
-      console.log(data);
       startTransition(async () => {
-        await createComment(data);
+        if (state.type === "comment") {
+          await createComment(data);
+        } else {
+          const { content } = data;
+          const replyData = {
+            content: content,
+            userId: session.$id,
+            comment: state.id,
+          };
+          await createChildrenComment(replyData);
+        }
       });
+      dispatch({ type: "RESET" });
     } catch (error) {
       console.log(error);
     }
@@ -191,7 +223,11 @@ const Confession = () => {
             rules={{ required: true }}
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
-                placeholder={`What's on your mind, ${session.nickname}?`}
+                placeholder={
+                  state.type === "comment"
+                    ? `What's on your mind, ${session.nickname}?`
+                    : `Reply to, ${state.author}`
+                }
                 className="w-full px-4 py-2 rounded-xl bg-white"
                 numberOfLines={4}
                 multiline

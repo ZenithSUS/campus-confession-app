@@ -1,8 +1,4 @@
-import {
-  createAnonymousSession,
-  deleteSession,
-  getCurrentSession,
-} from "@/appwrite";
+import { deleteSession, getCurrentSession } from "@/appwrite";
 import { useSession } from "@/context/session";
 import { router } from "expo-router";
 import React from "react";
@@ -18,7 +14,6 @@ const NewSessionModal = ({ openModal, setOpenModal }: Props) => {
 
   const handleNewSession = async () => {
     await deleteSession();
-    await createAnonymousSession();
     const session = await getCurrentSession();
     setSession({ $id: session.$id, nickname: session.prefs.nickname });
     setOpenModal(false);

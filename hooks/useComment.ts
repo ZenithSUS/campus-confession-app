@@ -35,8 +35,5 @@ export const useCreateComment = (): UseBaseMutationResult<
       queryClient.invalidateQueries({ queryKey: ["comments"] }),
         queryClient.invalidateQueries({ queryKey: ["confessions"] });
     },
-    onError: () => {
-      throw new Error("There is something wrong creating your comment");
-    },
   });
 };

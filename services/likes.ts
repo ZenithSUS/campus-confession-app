@@ -5,7 +5,10 @@ export const createLike = (data: CreateLike) =>
   axiosClient.post("/likes", data);
 
 export const getLikesByConfession = (id: string) =>
-  axiosClient.get(`/likes/${id}`);
+  axiosClient.get(`/likes/confession/${id}`);
+
+export const getLikesByComments = (id: string) =>
+  axiosClient.get(`/likes/comments/${id}`);
 
 export const deleteLike = (id: string) => axiosClient.delete(`/likes/${id}`);
 

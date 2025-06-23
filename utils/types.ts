@@ -25,10 +25,11 @@ export type CreateConfession = {
 export type Likes = {
   $id: string;
   confessionId: string;
+  commentId: string;
   userId: string;
 };
 
-export type CreateLike = Omit<Likes, "$id">;
+export type CreateLike = Partial<Likes>;
 
 export type Comments = {
   $id: string;
@@ -36,8 +37,10 @@ export type Comments = {
   content: string;
   $createdAt: string;
   author: string;
-  likes: number;
-  childComments: number;
+  likesLength: number;
+  likesData: Likes[];
+  repliesLength: number;
+  repliesData: ChildrenComment[];
 };
 
 export type CreateComment = {
@@ -45,3 +48,20 @@ export type CreateComment = {
   confession: string;
   author: string;
 };
+
+export type ChildrenComment = {
+  $id: string;
+  $createdAt: string;
+  userId: string;
+  author: string;
+  commentId: string;
+  content: string;
+};
+
+export type CreateChildrenComment = {
+  userId: string;
+  comment: string;
+  content: string;
+};
+
+export type ShowChildrenComment = ChildrenComment;

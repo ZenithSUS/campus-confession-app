@@ -50,7 +50,7 @@ const TopConfessions = () => {
 
   if (!confessions || confessions.length === 0) {
     return (
-      <View className="flex-1 items-center justify-center">
+      <View className="flex-1 items-center justify-center min-h-screen">
         <Text className="text-lg font-bold">No confessions found</Text>
       </View>
     );

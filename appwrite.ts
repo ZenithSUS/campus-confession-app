@@ -23,6 +23,10 @@ export async function getCurrentSession() {
 }
 
 export async function deleteSession() {
-  const acc = await account.deleteSession("current");
-  return acc;
+  try {
+    await account.deleteSession("current");
+    await createAnonymousSession();
+  } catch (error) {
+    await createAnonymousSession();
+  }
 }
