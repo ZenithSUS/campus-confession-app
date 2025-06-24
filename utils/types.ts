@@ -64,4 +64,8 @@ export type CreateChildrenComment = {
   content: string;
 };
 
-export type ShowChildrenComment = ChildrenComment;
+export type ShowChildrenComment = ChildrenComment & {
+  author: string;
+  likesLength: number;
+  likesData: Likes[];
+};

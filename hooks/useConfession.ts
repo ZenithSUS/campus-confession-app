@@ -21,6 +21,10 @@ export const useGetConfession = (): QueryObserverResult<Confessions[]> => {
       const { data } = await getConfessions();
       return data;
     },
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    retry: 2,
+    staleTime: 5 * 60 * 1000,
   });
 };
 

@@ -23,10 +23,5 @@ export async function getCurrentSession() {
 }
 
 export async function deleteSession() {
-  try {
-    await account.deleteSession("current");
-    await createAnonymousSession();
-  } catch (error) {
-    await createAnonymousSession();
-  }
+  await account.deleteSession("current");
 }

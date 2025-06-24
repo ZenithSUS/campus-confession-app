@@ -8,6 +8,7 @@ import { ArrowBigLeftDash } from "lucide-react-native";
 import React, { useTransition } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
+  ActivityIndicator,
   Button,
   StyleSheet,
   Text,
@@ -19,7 +20,7 @@ import Picker from "react-native-picker-select";
 
 const NewConfession = () => {
   const pathname = usePathname();
-  const { session } = useSession();
+  const { session, isLoading: isSessionLoading } = useSession();
   const queryClient = useQueryClient();
   const {
     control,
@@ -37,8 +38,8 @@ const NewConfession = () => {
         await useCreateConfession(data);
         queryClient.invalidateQueries({ queryKey: ["confessions"] });
       });
-      
-      if(!isPending) router.replace("/");
+
+      if (!isPending) router.replace("/");
     } catch (error) {
       console.log(error);
     }
@@ -50,6 +51,13 @@ const NewConfession = () => {
     if (pathname === path) return;
     router.replace(path as RelativePathString);
   };
+
+  if (isSessionLoading)
+    return (
+      <View className="flex-1 justify-center items-center min-h-screen">
+        <ActivityIndicator size={"large"} color={"#1C1C3A"} />
+      </View>
+    );
 
   return (
     <View className="flex-1 bg-white px-4 py-2 flex-col gap-2">
@@ -72,8 +80,10 @@ const NewConfession = () => {
       <View className="bg-gray-100 rounded-xl">
         <View className="flex-col gap-2 p-4">
           <View className="flex-row gap-2">
-            <Text className="text-lg">Anonymous Name:</Text>
-            <Text className="font-bold text-lg">{session?.nickname}</Text>
+            <Text className="text-lg">Post as:</Text>
+            <Text className="font-bold text-lg" numberOfLines={1}>
+              {session?.nickname}
+            </Text>
           </View>
 
           <Text className="font-bold text-md">Campus</Text>
@@ -106,7 +116,7 @@ const NewConfession = () => {
             rules={{ required: true }}
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
-                className="bg-white px-3 py-2 rounded-xl"
+                className="bg-white px-2 py-2 rounded-xl"
                 numberOfLines={5}
                 multiline={true}
                 placeholder="Confession..."
@@ -153,5 +163,13 @@ const categoryStyle = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: "#ffffff",
     color: "#1C1C3A",
+    paddingHorizontal: 12,
+  },
+  inputIOS: {
+    fontSize: 12,
+    borderRadius: 8,
+    backgroundColor: "#ffffff",
+    color: "#1C1C3A",
+    paddingHorizontal: 12,
   },
 });

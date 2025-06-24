@@ -7,6 +7,7 @@ import {
   useGetCommentsByConfession,
 } from "@/hooks/useComment";
 import { useGetConfessionById } from "@/hooks/useConfession";
+import { useCreateLike, useDeleteLike } from "@/hooks/useLike";
 import { timeDifference } from "@/utils/calculate-time";
 import { CreateComment } from "@/utils/types";
 import { router, useLocalSearchParams } from "expo-router";
@@ -58,10 +59,34 @@ const Confession = () => {
     },
   });
 
+  const handleReset = () => {
+    dispatch({ type: "RESET" });
+    dispatch({ type: "SET_TYPE", payload: "comment" });
+  };
+
   const isLiked =
     confession?.likesData.map((like) => like.userId).includes(session.$id) ||
     false;
 
+  const handleLike = async () => {
+    try {
+      startTransition(async () => {
+        if (isLiked) {
+          const likeId = confession?.likesData.find(
+            (like) => like.userId === session.$id
+          )?.$id;
+
+          await useDeleteLike(likeId!);
+        } else {
+          const data = {
+            confessionId: confession?.$id,
+            userId: session.$id,
+          };
+          await useCreateLike(data);
+        }
+      });
+    } catch (error) {}
+  };
   useEffect(() => {
     const showSubscription = Keyboard.addListener("keyboardDidShow", () => {
       setKeyboardOffSet(Platform.OS === "ios" ? 80 : 100);
@@ -105,6 +130,7 @@ const Confession = () => {
             content: content,
             userId: session.$id,
             comment: state.id,
+            author: session.nickname,
           };
           await createChildrenComment(replyData);
         }
@@ -145,108 +171,135 @@ const Confession = () => {
     );
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={keyboardOffSet}
+    <ScrollView
+      className="flex-1"
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ flexGrow: 1 }}
+      keyboardShouldPersistTaps="handled"
     >
-      <View className="flex-1 bg-white px-4 py-2 gap-2">
-        {/* Header Section */}
-        <View className="flex-row justify-between items-center">
-          <Text className="font-bold text-lg">Confession Details</Text>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={keyboardOffSet}
+      >
+        <View className="flex-1 bg-white px-4 py-2 gap-2">
+          {/* Header Section */}
+          <View className="flex-row justify-between items-center">
+            <Text className="font-bold text-lg">Confession Details</Text>
 
-          <TouchableOpacity
-            className="flex-row items-center gap-2"
-            onPress={() => router.back()}
-          >
-            <ArrowBigLeftDash size={22} color="#1C1C3A" />
-            <Text>Back</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View className="flex col gap-2 shadow p-5 rounded-xl">
-          <View className="flex-col gap-2 py-2">
-            <Text className="font-bold">{confession.user}</Text>
-            <Text>{confession.text}</Text>
+            <TouchableOpacity
+              className="flex-row items-center gap-2"
+              onPress={() => router.back()}
+            >
+              <ArrowBigLeftDash size={22} color="#1C1C3A" />
+              <Text>Back</Text>
+            </TouchableOpacity>
           </View>
 
-          <View className="flex-row justify-between">
-            <TouchableOpacity className="flex-row gap-2 items-center">
-              <Heart size={18} color={isLiked ? "red" : "#6B7280"} />
-              <Text>{confession.likesLength}</Text>
+          <View className="flex col gap-2 shadow p-5 rounded-xl">
+            <View className="flex-col gap-2 py-2">
+              <Text className="font-bold">{confession.user}</Text>
+              <Text>{confession.text}</Text>
+            </View>
 
-              <TextIcon size={18} color="#6B7280" />
-              <Text>{confession.commentsLength}</Text>
-            </TouchableOpacity>
+            <View className="flex-row justify-between">
+              <View className="flex-row gap-2 items-center">
+                <TouchableOpacity
+                  className="flex-row items-center gap-2"
+                  onPress={handleLike}
+                >
+                  <Heart size={18} color={isLiked ? "red" : "#6B7280"} />
+                  <Text>{confession.likesLength}</Text>
+                </TouchableOpacity>
 
-            <View className="flex-row gap-2 items-center">
-              <Text>{timeDifference(confession.$createdAt)} ago</Text>
+                <TouchableOpacity className="flex-row items-center gap-2">
+                  <TextIcon size={18} color="#6B7280" />
+                  <Text>{confession.commentsLength}</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View className="flex-row gap-2 items-center">
+                <Text>{timeDifference(confession.$createdAt)} ago</Text>
+              </View>
             </View>
           </View>
-        </View>
 
-        {comments.length > 0 ? (
-          <View className="flex-row gap-2 items-center">
-            <Notebook size={18} color="#6B7280" />
-            <Text className="font-bold text-lg">Comments</Text>
-          </View>
-        ) : (
-          <Text className="font-bold">No comments yet</Text>
-        )}
-
-        <ScrollView
-          className="flex-1"
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ flexGrow: 1 }}
-          keyboardShouldPersistTaps="handled"
-        >
-          {comments && (
-            <FlatList
-              data={comments}
-              keyExtractor={(item) => item.$id.toString()}
-              nestedScrollEnabled={true}
-              renderItem={({ item }) => <CommentCard comment={item} />}
-            />
+          {comments.length > 0 ? (
+            <View className="flex-row gap-2 items-center">
+              <Notebook size={18} color="#6B7280" />
+              <Text className="font-bold text-lg">Comments</Text>
+            </View>
+          ) : (
+            <Text className="font-bold">No comments yet</Text>
           )}
-        </ScrollView>
 
-        {/* Leave a comment input */}
-        <View className="gap-2 bg-gray-100 px-4 py-2 rounded-xl">
-          <Text className="font-bold">Leave a comment</Text>
-
-          <Controller
-            control={control}
-            name="content"
-            rules={{ required: true }}
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                placeholder={
-                  state.type === "comment"
-                    ? `What's on your mind, ${session.nickname}?`
-                    : `Reply to, ${state.author}`
-                }
-                className="w-full px-4 py-2 rounded-xl bg-white"
-                numberOfLines={4}
-                multiline
-                value={value}
-                onBlur={onBlur}
-                onChangeText={onChange}
+          <ScrollView
+            className="flex-1"
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ flexGrow: 1 }}
+            keyboardShouldPersistTaps="handled"
+          >
+            {comments && (
+              <FlatList
+                data={comments}
+                keyExtractor={(item) => item.$id.toString()}
+                nestedScrollEnabled={true}
+                renderItem={({ item }) => <CommentCard comment={item} />}
               />
             )}
-          />
-          <TouchableOpacity activeOpacity={0.7}>
-            <Button
-              title="Comment"
-              onPress={handleSubmit(submitComment)}
-              disabled={isPending}
+          </ScrollView>
+
+          {/* Leave a comment input */}
+          <View className="gap-2 bg-gray-100 px-4 py-2 rounded-xl">
+            <Text className="font-bold">Leave a comment</Text>
+
+            <Controller
+              control={control}
+              name="content"
+              rules={{ required: true }}
+              render={({ field: { onChange, onBlur, value } }) => (
+                <TextInput
+                  placeholder={
+                    state.type === "comment"
+                      ? `What's on your mind, ${session.nickname}?`
+                      : `Reply to, ${state.author}`
+                  }
+                  className="w-full px-4 py-2 rounded-xl bg-white"
+                  numberOfLines={4}
+                  multiline
+                  value={value}
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                />
+              )}
             />
-          </TouchableOpacity>
+            <TouchableOpacity activeOpacity={0.7}>
+              <Button
+                title={
+                  state.type === "comment"
+                    ? "Comment"
+                    : `Reply to ${state.author}`
+                }
+                onPress={handleSubmit(submitComment)}
+                disabled={isPending}
+              />
+            </TouchableOpacity>
+
+            {state.type === "reply" && (
+              <TouchableOpacity activeOpacity={0.7}>
+                <Button title="Cancel" onPress={handleReset} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
-      </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </ScrollView>
   );
 };
 

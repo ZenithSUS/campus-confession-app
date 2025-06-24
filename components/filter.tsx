@@ -1,6 +1,6 @@
 import { campuses } from "@/constants/campuses";
 import React from "react";
-import { Platform, StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import RNPickerSelect from "react-native-picker-select";
 
 export const Filter = ({
@@ -10,21 +10,18 @@ export const Filter = ({
 }) => {
   return (
     <View className="w-full p-3 rounded-xl">
-      <View className="flex-row items-center justify-between">
-        <Text className="font-bold text-lg mr-2">Campus:</Text>
-        <View className="flex-1 relative">
-          <RNPickerSelect
-            value={"All"}
-            onValueChange={(value) => onFilter(value)}
-            items={campuses.map((campus) => ({
-              label: campus.name,
-              value: campus.id,
-            }))}
-            style={styles}
-            placeholder={{ label: "All", value: "All" }}
-            useNativeAndroidPickerStyle={false}
-          />
-        </View>
+      <View className="flex-1 relative">
+        <RNPickerSelect
+          value={"All"}
+          onValueChange={(value) => onFilter(value)}
+          items={campuses.map((campus) => ({
+            label: campus.name,
+            value: campus.id,
+          }))}
+          style={styles}
+          placeholder={{ label: "All", value: "All" }}
+          useNativeAndroidPickerStyle={false}
+        />
       </View>
     </View>
   );

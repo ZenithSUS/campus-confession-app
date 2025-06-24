@@ -1,6 +1,7 @@
 import ConfessionCard from "@/components/confession-card";
 import Filter from "@/components/filter";
 import Searchbar from "@/components/searchbar";
+import { useSession } from "@/context/session";
 import { useGetConfession } from "@/hooks/useConfession";
 import { shuffleData } from "@/utils/shuffle";
 import { Confessions } from "@/utils/types";
@@ -16,6 +17,7 @@ import {
 } from "react-native";
 
 const Home = () => {
+  const { isLoading: isLoadingSession } = useSession();
   const {
     data: fetchedconfessions,
     isLoading,
@@ -86,7 +88,7 @@ const Home = () => {
     setFilterCategory(category);
   }, []);
 
-  if (isLoading || refreshing) {
+  if (isLoading || refreshing || isLoadingSession) {
     return (
       <View className="flex-1 items-center justify-center min-h-screen">
         <ActivityIndicator size="large" color={"#1C1C3A"} />
@@ -129,7 +131,7 @@ const Home = () => {
         ListEmptyComponent={
           !isLoading ? (
             <View className="flex-1 items-center justify-center min-h-[400px]">
-              <Text className="font-bold text-lg">
+              <Text className="font-bold text-lg text-center">
                 {searchQuery || filterCategory
                   ? "No confessions match your search"
                   : "No confessions found yet"}

@@ -2,7 +2,7 @@ import {
   createChildrenComment,
   getChildrenCommentById,
 } from "@/services/children-comment";
-import { ChildrenComment, CreateChildrenComment } from "@/utils/types";
+import { CreateChildrenComment, ShowChildrenComment } from "@/utils/types";
 import {
   QueryObserverResult,
   UseBaseMutationResult,
@@ -23,15 +23,14 @@ export const useCreateChildenComment = (): UseBaseMutationResult<
     mutationKey: ["childrenComments"],
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["childrenComments"] });
-      queryClient.invalidateQueries({ queryKey: ["comments"] });
     },
   });
 };
 
 export const useGetChildrenCommentsById = (
   id: string
-): QueryObserverResult<ChildrenComment[]> => {
-  return useQuery<ChildrenComment[]>({
+): QueryObserverResult<ShowChildrenComment[]> => {
+  return useQuery<ShowChildrenComment[]>({
     queryFn: async () => {
       const { data } = await getChildrenCommentById(id);
       return data;
