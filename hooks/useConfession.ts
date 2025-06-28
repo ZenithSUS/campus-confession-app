@@ -4,7 +4,7 @@ import {
   getConfession,
   getConfessions,
 } from "@/services/confession";
-import { Confessions, CreateConfession } from "@/utils/types";
+import { Confessions, CreateConfession, ShowConfessions } from "@/utils/types";
 import {
   QueryObserverResult,
   UseBaseMutationResult,
@@ -14,8 +14,8 @@ import {
 } from "@tanstack/react-query";
 import { AxiosResponse } from "axios";
 
-export const useGetConfession = (): QueryObserverResult<Confessions[]> => {
-  return useQuery<Confessions[]>({
+export const useGetConfession = (): QueryObserverResult<ShowConfessions[]> => {
+  return useQuery<ShowConfessions[]>({
     queryKey: ["confessions"],
     queryFn: async () => {
       const { data } = await getConfessions();
@@ -30,8 +30,8 @@ export const useGetConfession = (): QueryObserverResult<Confessions[]> => {
 
 export const useGetConfessionById = (
   id: string
-): QueryObserverResult<Confessions> => {
-  return useQuery<Confessions>({
+): QueryObserverResult<ShowConfessions> => {
+  return useQuery<ShowConfessions>({
     queryKey: ["confession", id],
     queryFn: async () => {
       const { data } = await getConfession(id);

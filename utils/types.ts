@@ -8,11 +8,14 @@ export type Confessions = {
   campus: string;
   text: string;
   $createdAt: string;
+  user: string;
+};
+
+export type ShowConfessions = Confessions & {
   likesData: Likes[];
   commentsData: Comments[];
   likesLength: number;
   commentsLength: number;
-  user: string;
 };
 
 export type CreateConfession = {
@@ -24,16 +27,26 @@ export type CreateConfession = {
 
 export type Likes = {
   $id: string;
-  confessionId: string;
-  commentId: string;
+  confessionId: Confessions;
+  childrenCommentId: ChildrenComment;
+  commentId: Comments;
   userId: string;
 };
 
-export type CreateLike = Partial<Likes>;
+export type CreateLike = {
+  confessionId?: string;
+  childrenCommentId?: string;
+  userId: string;
+};
+
+export type CreateLikeReply = {
+  childrenCommentId: string;
+  userId: string;
+};
 
 export type Comments = {
   $id: string;
-  confessionId: string;
+  confession: Confessions;
   content: string;
   $createdAt: string;
   author: string;
@@ -54,7 +67,7 @@ export type ChildrenComment = {
   $createdAt: string;
   userId: string;
   author: string;
-  commentId: string;
+  comment: Comments;
   content: string;
 };
 

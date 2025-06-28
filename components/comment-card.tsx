@@ -3,26 +3,52 @@ import { useSession } from "@/context/session";
 import { useCreateLike, useDeleteLike } from "@/hooks/useLike";
 import { timeDifference } from "@/utils/calculate-time";
 import { Comments } from "@/utils/types";
-import { useQueryClient } from "@tanstack/react-query";
 import { Heart, TextIcon } from "lucide-react-native";
-import React, { useState, useTransition } from "react";
+import React, { useMemo, useTransition } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import ChildrenCommentCard from "./children-comment-card";
 
-const CommentCard = ({ comment }: { comment: Comments }) => {
-  const [isShowReply, setIsShowReply] = useState(false);
-  const { dispatch } = useComment();
-  const queryClient = useQueryClient();
-  const [isPending, startTransition] = useTransition();
+interface CommentCardProps {
+  comment: Comments;
+  openReplyId: string | null;
+  setOpenReplyId: (id: string | null) => void;
+}
+
+const CommentCard = ({
+  comment,
+  openReplyId,
+  setOpenReplyId,
+}: CommentCardProps) => {
+  const { state, dispatch } = useComment();
   const { session } = useSession();
-  const isLiked = comment.likesData
-    .map((like) => like.userId)
-    .includes(session.$id);
+  const { mutateAsync: CreateLike } = useCreateLike();
+  const { mutateAsync: DeleteLike } = useDeleteLike();
+  const [isPending, startTransition] = useTransition();
+  const isShowReply = openReplyId === comment.$id;
+  const isLiked = useMemo(() => {
+    return comment.likesData.some((like) => like.userId === session.$id);
+  }, [comment.likesData]);
 
   const handleReply = () => {
     dispatch({ type: "SET_ID", payload: comment.$id });
     dispatch({ type: "SET_TYPE", payload: "reply" });
     dispatch({ type: "SET_AUTHOR", payload: comment.author });
+
+    if (isShowReply) {
+      setOpenReplyId(null);
+      dispatch({ type: "RESET" });
+      dispatch({ type: "SET_TYPE", payload: "comment" });
+    } else {
+      setOpenReplyId(comment.$id);
+    }
+  };
+
+  const handleShowReplies = () => {
+    if (isShowReply) {
+      setOpenReplyId(null);
+    } else {
+      setOpenReplyId(comment.$id);
+    }
   };
 
   const handleLike = () => {
@@ -32,19 +58,15 @@ const CommentCard = ({ comment }: { comment: Comments }) => {
           const likeId = comment.likesData.find(
             (like) => like.userId === session.$id
           )?.$id;
-          await useDeleteLike(likeId!);
+          await DeleteLike(likeId!);
         } else {
           const data = {
             commentId: comment.$id,
             userId: session.$id,
           };
-
-          await useCreateLike(data);
+          await CreateLike(data);
         }
       });
-
-      if (!isPending)
-        return queryClient.invalidateQueries({ queryKey: ["likes"] });
     } catch (error) {
       console.log(error);
     }
@@ -71,7 +93,7 @@ const CommentCard = ({ comment }: { comment: Comments }) => {
 
             <TouchableOpacity
               className="flex-row items-center gap-2 cursor-pointer"
-              onPress={() => setIsShowReply(!isShowReply)}
+              onPress={handleShowReplies}
             >
               <TextIcon size={18} />
               <Text>{comment.repliesLength}</Text>
@@ -81,7 +103,17 @@ const CommentCard = ({ comment }: { comment: Comments }) => {
           <View className="flex-row gap-2">
             <Text>{timeDifference(comment.$createdAt)} ago</Text>
             <TouchableOpacity onPress={handleReply}>
-              <Text className="font-semibold">Reply</Text>
+              <Text
+                className="font-semibold"
+                style={{
+                  color:
+                    state.type === "reply" && state.id === comment.$id
+                      ? "blue"
+                      : "black",
+                }}
+              >
+                Reply
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -89,7 +121,7 @@ const CommentCard = ({ comment }: { comment: Comments }) => {
 
       {isShowReply && (
         <View className="flex-col gap-2 p-5">
-          <ChildrenCommentCard commentId={comment.$id} />
+          <ChildrenCommentCard key={comment.$id} commentId={comment.$id} />
         </View>
       )}
     </View>

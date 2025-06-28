@@ -1,41 +1,38 @@
 import { useSession } from "@/context/session";
 import { useCreateLike, useDeleteLike } from "@/hooks/useLike";
 import { timeDifference } from "@/utils/calculate-time";
-import { Confessions } from "@/utils/types";
-import { useQueryClient } from "@tanstack/react-query";
+import { ShowConfessions } from "@/utils/types";
 import { Link, router } from "expo-router";
 import { Heart, TextIcon } from "lucide-react-native";
-import React, { useTransition } from "react";
+import React, { useMemo, useTransition } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 
-const ConfessionCard = ({ confession }: { confession: Confessions }) => {
+const ConfessionCard = ({ confession }: { confession: ShowConfessions }) => {
   const { session } = useSession();
-  const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
+  const { mutateAsync: CreateLike } = useCreateLike();
+  const { mutateAsync: DeleteLike } = useDeleteLike();
   const isAuthor = confession.user === session.nickname;
-  const isLiked = confession.likesData
-    .map((like) => like.userId)
-    .includes(session.$id);
+  const isLiked = useMemo(() => {
+    return confession.likesData.some((like) => like.userId === session.$id);
+  }, [confession.likesData]);
 
   const handleLike = () => {
     try {
-      if (isLiked) {
-        const likeId = confession.likesData.find(
-          (like) => like.userId === session.$id
-        )?.$id;
-        startTransition(async () => {
-          await useDeleteLike(likeId!);
-        });
-      } else {
-        const data = {
-          confessionId: confession.$id,
-          userId: session.$id,
-        };
-        startTransition(async () => {
-          await useCreateLike(data);
-        });
-      }
-      queryClient.invalidateQueries({ queryKey: ["confessions"] });
+      startTransition(async () => {
+        if (isLiked) {
+          const likeId = confession.likesData.find(
+            (like) => like.userId === session.$id
+          )?.$id;
+          await DeleteLike(likeId!);
+        } else {
+          const data = {
+            confessionId: confession.$id,
+            userId: session.$id,
+          };
+          await CreateLike(data);
+        }
+      });
     } catch (error) {
       console.log(error);
     }

@@ -2,9 +2,12 @@ import ConfessionCard from "@/components/confession-card";
 import Filter from "@/components/filter";
 import Searchbar from "@/components/searchbar";
 import { useSession } from "@/context/session";
+import { useGetComments } from "@/hooks/useComment";
 import { useGetConfession } from "@/hooks/useConfession";
+import { useGetLikes } from "@/hooks/useLike";
+import { posts } from "@/utils/posts";
 import { shuffleData } from "@/utils/shuffle";
-import { Confessions } from "@/utils/types";
+import { ShowConfessions } from "@/utils/types";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -21,22 +24,48 @@ const Home = () => {
   const {
     data: fetchedconfessions,
     isLoading,
-    refetch,
+    refetch: refetchConfession,
     error,
   } = useGetConfession();
+  const {
+    data: fetchedLikes,
+    isLoading: likesLoading,
+    refetch: refetchLikes,
+  } = useGetLikes();
+  const {
+    data: fetchedComments,
+    isLoading: commentsLoading,
+    refetch: refetchComments,
+  } = useGetComments();
+
   const [refreshing, setRefreshing] = useState(false);
-  const [filteredConfessions, setFilteredConfessions] = useState<Confessions[]>(
-    []
-  );
+  const [filteredConfessions, setFilteredConfessions] = useState<
+    ShowConfessions[]
+  >([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const router = useRouter();
 
   useEffect(() => {
-    if (fetchedconfessions) {
-      setFilteredConfessions(shuffleData(fetchedconfessions as Confessions[]));
+    if (fetchedconfessions && fetchedLikes && fetchedComments) {
+      const data = posts(fetchedconfessions, fetchedLikes, fetchedComments);
+      setFilteredConfessions(shuffleData(data as ShowConfessions[]));
     }
-  }, [fetchedconfessions]);
+  }, [fetchedconfessions, fetchedLikes, fetchedComments]);
+
+  const isDataLoaded = useMemo(() => {
+    return !!fetchedconfessions && !!fetchedLikes && !!fetchedComments;
+  }, [fetchedconfessions, fetchedLikes, fetchedComments]);
+
+  const AnyLoading = useMemo(() => {
+    return (
+      isLoading ||
+      isLoadingSession ||
+      likesLoading ||
+      commentsLoading ||
+      refreshing
+    );
+  }, [isLoading, isLoadingSession, likesLoading, commentsLoading, refreshing]);
 
   const displayedConfessions = useMemo(() => {
     let result = filteredConfessions;
@@ -65,18 +94,30 @@ const Home = () => {
     return result;
   }, [filteredConfessions, searchQuery, filterCategory]);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    refetch().finally(() => setRefreshing(false));
-  }, [refetch]);
+    try {
+      await Promise.all([
+        refetchConfession(),
+        refetchLikes(),
+        refetchComments(),
+      ]);
+    } catch (error) {
+      console.log("Error refreshing data:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   const renderConfessionItem = useCallback(
-    ({ item }: { item: Confessions }) => <ConfessionCard confession={item} />,
+    ({ item }: { item: ShowConfessions }) => (
+      <ConfessionCard confession={item} />
+    ),
     []
   );
 
   const keyExtractor = useCallback(
-    (item: Confessions) => item.$id.toString(),
+    (item: ShowConfessions) => item.$id.toString(),
     []
   );
 
@@ -88,7 +129,7 @@ const Home = () => {
     setFilterCategory(category);
   }, []);
 
-  if (isLoading || refreshing || isLoadingSession) {
+  if (AnyLoading || !isDataLoaded) {
     return (
       <View className="flex-1 items-center justify-center min-h-screen">
         <ActivityIndicator size="large" color={"#1C1C3A"} />
@@ -96,7 +137,7 @@ const Home = () => {
     );
   }
 
-  if (error || !fetchedconfessions) {
+  if (error) {
     return (
       <View className="flex-1 items-center justify-center min-h-screen">
         <View className="flex-col items-center gap-2">

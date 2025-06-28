@@ -1,10 +1,11 @@
 import { useSession } from "@/context/session";
 import { useGetChildrenCommentsById } from "@/hooks/useChildrenComment";
-import { useCreateLike, useDeleteLike } from "@/hooks/useLike";
+import { useCreateLike, useDeleteLike, useGetLikes } from "@/hooks/useLike";
 import { timeDifference } from "@/utils/calculate-time";
+import { replies } from "@/utils/replies";
 import { ShowChildrenComment } from "@/utils/types";
 import { Heart } from "lucide-react-native";
-import React, { useCallback, useTransition } from "react";
+import React, { useCallback, useMemo, useTransition } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -16,9 +17,11 @@ import {
 const ChildrenCommentItems = ({ item }: { item: ShowChildrenComment }) => {
   const { session } = useSession();
   const [isPending, startTransition] = useTransition();
-  const isLiked = item.likesData
-    .map((like) => like.userId)
-    .includes(session.$id);
+  const { mutateAsync: CreateLike } = useCreateLike();
+  const { mutateAsync: DeleteLike } = useDeleteLike();
+  const isLiked = useMemo(() => {
+    return item.likesData.some((like) => like.userId === session.$id);
+  }, [item.likesData]);
 
   const handleLike = () => {
     try {
@@ -27,13 +30,13 @@ const ChildrenCommentItems = ({ item }: { item: ShowChildrenComment }) => {
           const likeId = item.likesData.find(
             (like) => like.userId === session.$id
           )?.$id;
-          await useDeleteLike(likeId!);
+          await DeleteLike(likeId!);
         } else {
           const data = {
             childrenCommentId: item.$id,
             userId: session.$id,
           };
-          await useCreateLike(data);
+          await CreateLike(data);
         }
       });
     } catch (error) {
@@ -67,8 +70,22 @@ const ChildrenCommentItems = ({ item }: { item: ShowChildrenComment }) => {
 };
 
 const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
-  const { data: childrenComments, isLoading } =
+  const { data: childrenComments, isLoading: isChildrenCommentsLoading } =
     useGetChildrenCommentsById(commentId);
+  const { data: childrenLikes, isLoading: isLikesLoading } = useGetLikes();
+
+  const isDataLoaded = useMemo(() => {
+    return childrenComments && childrenLikes;
+  }, [childrenComments, childrenLikes]);
+
+  const isAnyLoading = useMemo(() => {
+    return isChildrenCommentsLoading || isLikesLoading;
+  }, [isChildrenCommentsLoading, isLikesLoading]);
+
+  const processedReplies = useMemo(() => {
+    if (!isDataLoaded) return [];
+    return replies(childrenComments!, childrenLikes!);
+  }, [childrenComments, childrenLikes]);
 
   const keyExtractor = useCallback(
     (items: ShowChildrenComment) => items.$id.toString(),
@@ -77,15 +94,16 @@ const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
 
   const renderChildrenComment = useCallback(
     ({ item }: { item: ShowChildrenComment }) => (
-      <ChildrenCommentItems item={item} />
+      <ChildrenCommentItems item={item} key={item.$id} />
     ),
     []
   );
 
-  if (isLoading) {
+  if (isAnyLoading) {
     return (
       <View className="flex-1 p-4 justify-center items-center mt-2">
         <ActivityIndicator size="large" color={"#1C1C3A"} />
+        <Text className="text-sm p-4">Loading...</Text>
       </View>
     );
   }
@@ -93,7 +111,7 @@ const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
   return (
     <View className="flex-1">
       <FlatList
-        data={childrenComments}
+        data={processedReplies}
         keyExtractor={keyExtractor}
         renderItem={renderChildrenComment}
         ListHeaderComponent={
@@ -102,6 +120,8 @@ const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
           </Text>
         }
         scrollEnabled={true}
+        initialNumToRender={10}
+        ItemSeparatorComponent={() => <View className="h-4" />}
         ListEmptyComponent={
           <View className="flex-1 justify-center items-center mt-2">
             <Text className="font-bold text-lg p-4">No Replies Yet.</Text>

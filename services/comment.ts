@@ -1,6 +1,6 @@
 import axiosClient from "@/services/axios";
 
-export const getComments = (id: string) => axiosClient.get(`/comments/${id}`);
+export const getComments = () => axiosClient.get("/comments");
 
 export const getCommentsByConfession = (id: string) =>
   axiosClient.get(`/comments/${id}`);

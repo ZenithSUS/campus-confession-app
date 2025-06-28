@@ -26,6 +26,17 @@ export const useCreateChildenComment = (): UseBaseMutationResult<
     },
   });
 };
+export const useGetChildrenComments = (): QueryObserverResult<
+  ShowChildrenComment[]
+> => {
+  return useQuery<ShowChildrenComment[]>({
+    queryFn: async () => {
+      const { data } = await getChildrenCommentById("");
+      return data;
+    },
+    queryKey: ["childrenComments"],
+  });
+};
 
 export const useGetChildrenCommentsById = (
   id: string

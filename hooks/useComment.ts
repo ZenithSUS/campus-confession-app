@@ -1,4 +1,8 @@
-import { createComment, getCommentsByConfession } from "@/services/comment";
+import {
+  createComment,
+  getComments,
+  getCommentsByConfession,
+} from "@/services/comment";
 import { Comments, CreateComment } from "@/utils/types";
 import {
   QueryObserverResult,
@@ -8,6 +12,20 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { AxiosResponse } from "axios";
+
+export const useGetComments = (): QueryObserverResult<Comments[]> => {
+  return useQuery<Comments[]>({
+    queryKey: ["comments"],
+    queryFn: async () => {
+      const { data } = await getComments();
+      return data;
+    },
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    retry: 2,
+    staleTime: 5 * 60 * 1000,
+  });
+};
 
 export const useGetCommentsByConfession = (
   id: string
