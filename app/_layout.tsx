@@ -10,9 +10,9 @@ const queryClient = new QueryClient();
 
 export default function App() {
   return (
-    <SessionProvider>
-      <CommentProvider>
-        <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      <SessionProvider>
+        <CommentProvider>
           <SafeAreaProvider>
             <SafeAreaView className="flex-1 bg-white">
               <Routes />
@@ -52,8 +52,8 @@ export default function App() {
               </Stack>
             </SafeAreaView>
           </SafeAreaProvider>
-        </QueryClientProvider>
-      </CommentProvider>
-    </SessionProvider>
+        </CommentProvider>
+      </SessionProvider>
+    </QueryClientProvider>
   );
 }

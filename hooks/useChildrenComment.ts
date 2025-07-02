@@ -1,7 +1,7 @@
 import {
   createChildrenComment,
   getChildrenCommentById,
-} from "@/services/children-comment";
+} from "@/services/api/children-comment";
 import { CreateChildrenComment, ShowChildrenComment } from "@/utils/types";
 import {
   QueryObserverResult,
@@ -35,6 +35,15 @@ export const useGetChildrenComments = (): QueryObserverResult<
       return data;
     },
     queryKey: ["childrenComments"],
+    refetchOnWindowFocus: false,
+    retry: (failedCount, error) => {
+      if (error instanceof Error) {
+        return error.message.includes("Network Error") ? false : true;
+      }
+      return failedCount < 2;
+    },
+    staleTime: 5 * 60 * 1000,
+    networkMode: "offlineFirst",
   });
 };
 
@@ -47,5 +56,14 @@ export const useGetChildrenCommentsById = (
       return data;
     },
     queryKey: ["childrenComments", id],
+    refetchOnWindowFocus: false,
+    retry: (failedCount, error) => {
+      if (error instanceof Error) {
+        return error.message.includes("Network Error") ? false : true;
+      }
+      return failedCount < 2;
+    },
+    staleTime: 5 * 60 * 1000,
+    networkMode: "offlineFirst",
   });
 };

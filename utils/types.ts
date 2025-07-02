@@ -3,6 +3,16 @@ export type Session = {
   nickname: string;
 };
 
+export type RefineConfession = {
+  confession: string;
+  context: string;
+};
+
+export type User = {
+  $id: string;
+  name: string;
+};
+
 export type Confessions = {
   $id: string;
   campus: string;

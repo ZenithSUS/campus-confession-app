@@ -1,5 +1,5 @@
+import axiosClient from "@/services/axios";
 import { CreateLike } from "@/utils/types";
-import axiosClient from "./axios";
 
 export const createLike = (data: CreateLike) =>
   axiosClient.post("/likes", data);
@@ -15,4 +15,11 @@ export const getLikesByChildrenComment = (id: string) =>
 
 export const deleteLike = (id: string) => axiosClient.delete(`/likes/${id}`);
 
-export const getLikes = () => axiosClient.get("/likes");
+export const getLikes = () => {
+  try {
+    return axiosClient.get("/likes");
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
+};

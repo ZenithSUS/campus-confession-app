@@ -3,7 +3,8 @@ import {
   deleteLike,
   getLikes,
   getLikesByConfession,
-} from "@/services/likes";
+} from "@/services/api/likes";
+import { networkAxiosError, retryAxiosError } from "@/utils/axios-error";
 import { CreateLike, Likes } from "@/utils/types";
 import {
   UseBaseMutationResult,
@@ -12,15 +13,35 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { AxiosResponse } from "axios";
+import { AxiosError, AxiosResponse } from "axios";
 
 export const useGetLikes = (): UseBaseQueryResult<Likes[]> => {
   return useQuery<Likes[]>({
     queryKey: ["likes"],
     queryFn: async () => {
-      const { data } = await getLikes();
-      return data;
+      try {
+        const response = await getLikes();
+        return response.data;
+      } catch (error) {
+        const err = error as AxiosError;
+        return networkAxiosError(err);
+      }
     },
+    refetchOnWindowFocus: false,
+    retry: (failedCount, error) => {
+      if (error instanceof Error) {
+        retryAxiosError(failedCount, error as AxiosError);
+        if (error.message.includes("Network Error")) {
+          console.log("Network Error");
+          return false;
+        }
+      }
+
+      return failedCount < 2;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 5 * 60 * 1000,
+    networkMode: "offlineFirst",
   });
 };
 

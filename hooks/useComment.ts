@@ -2,7 +2,8 @@ import {
   createComment,
   getComments,
   getCommentsByConfession,
-} from "@/services/comment";
+} from "@/services/api/comment";
+import { networkAxiosError, retryAxiosError } from "@/utils/axios-error";
 import { Comments, CreateComment } from "@/utils/types";
 import {
   QueryObserverResult,
@@ -11,19 +12,37 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { AxiosResponse } from "axios";
+import { AxiosError, AxiosResponse } from "axios";
 
 export const useGetComments = (): QueryObserverResult<Comments[]> => {
   return useQuery<Comments[]>({
     queryKey: ["comments"],
-    queryFn: async () => {
-      const { data } = await getComments();
-      return data;
+    queryFn: async ({ signal }) => {
+      try {
+        const response = await getComments(signal);
+        return response.data;
+      } catch (error) {
+        const err = error as AxiosError;
+        networkAxiosError(err);
+        throw err;
+      }
     },
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
-    retry: 2,
+    retry: (failedCount, error) => {
+      if (error instanceof Error) {
+        retryAxiosError(failedCount, error as AxiosError);
+
+        if (error.message.includes("Network Error")) {
+          return false;
+        }
+      }
+
+      return failedCount < 2;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     staleTime: 5 * 60 * 1000,
+    networkMode: "offlineFirst",
   });
 };
 
@@ -33,13 +52,24 @@ export const useGetCommentsByConfession = (
   return useQuery<Comments[]>({
     queryKey: ["comments", id],
     queryFn: async () => {
-      const { data } = await getCommentsByConfession(id);
-      return data;
+      try {
+        const response = await getCommentsByConfession(id);
+        return response.data;
+      } catch (error) {
+        const err = error as AxiosError;
+        return networkAxiosError(err);
+      }
     },
     refetchOnWindowFocus: false,
-    refetchOnReconnect: true,
-    retry: 2,
+    retry: (failedCount, error) => {
+      if (error instanceof Error) {
+        return error.message.includes("Network Error") ? false : true;
+      }
+
+      return failedCount < 2;
+    },
     staleTime: 5 * 60 * 1000,
+    networkMode: "offlineFirst",
   });
 };
 
@@ -51,7 +81,15 @@ export const useCreateComment = (): UseBaseMutationResult<
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateComment) => createComment(data),
+    mutationFn: (data: CreateComment) => {
+      try {
+        return createComment(data);
+      } catch (error) {
+        const err = error as AxiosError;
+        networkAxiosError(err);
+        throw err;
+      }
+    },
     mutationKey: ["comments"],
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["comments"] }),

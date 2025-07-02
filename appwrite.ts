@@ -1,5 +1,6 @@
 import { Account, Client } from "react-native-appwrite";
 import { assignName } from "./utils/assign-name";
+import { User } from "./utils/types";
 
 const appwriteConfig = {
   endpoint: process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT!,
@@ -11,9 +12,9 @@ const client = new Client()
   .setProject(appwriteConfig.projectId);
 const account = new Account(client);
 
-export async function createAnonymousSession() {
+export async function createAnonymousSession(processedUsers: User[]) {
   const acc = await account.createAnonymousSession();
-  await account.updatePrefs({ nickname: assignName() });
+  await account.updatePrefs({ nickname: assignName(processedUsers) });
   return acc;
 }
 

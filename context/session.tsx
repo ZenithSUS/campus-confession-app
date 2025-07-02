@@ -3,6 +3,7 @@ import {
   deleteSession,
   getCurrentSession,
 } from "@/appwrite";
+import { useCreateUser, useGetUsers } from "@/hooks/useUser";
 import {
   getSingleData,
   removeData,
@@ -14,6 +15,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 
@@ -32,21 +34,35 @@ export const SessionProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
+  // Local state
   const [session, setSession] = useState<Session>({ $id: "", nickname: "" });
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
 
+  // Hooks
+  const { mutateAsync: createUser } = useCreateUser();
+  const { data: users, isLoading: isUsersLoading } = useGetUsers();
+
+  const processedUsers = useMemo(() => {
+    if (!isUsersLoading && users) return users;
+    return [];
+  }, [isUsersLoading, users]);
+
+  // Create new session
   const createNewSession = useCallback(async (): Promise<Session> => {
-    await createAnonymousSession();
+    await createAnonymousSession(processedUsers);
     const newSession = await getCurrentSession();
     const sessionData = {
       $id: newSession.$id,
       nickname: newSession.prefs.nickname,
     };
+    const userData = { $id: newSession.$id, name: sessionData.nickname };
+    await createUser(userData);
     await storeSingleData("session", newSession.$id);
     return sessionData;
   }, []);
 
+  // Clear stored session
   const clearStoredSession = useCallback(async (): Promise<void> => {
     try {
       await removeData("session");
@@ -56,6 +72,7 @@ export const SessionProvider = ({
     }
   }, []);
 
+  // Initialize session
   const initializeSession = useCallback(async (): Promise<void> => {
     try {
       setIsLoading(true);
@@ -100,6 +117,7 @@ export const SessionProvider = ({
     }
   }, [createNewSession, clearStoredSession]);
 
+  // Refresh session
   const refreshSession = useCallback(async (): Promise<void> => {
     try {
       const currentSession = await getCurrentSession();
@@ -116,6 +134,7 @@ export const SessionProvider = ({
     }
   }, [initializeSession]);
 
+  // Clear session
   const clearSession = useCallback(async (): Promise<void> => {
     try {
       await clearStoredSession();
@@ -128,8 +147,11 @@ export const SessionProvider = ({
   }, [clearStoredSession, createNewSession]);
 
   useEffect(() => {
-    initializeSession();
-  }, [initializeSession]);
+    if (!isUsersLoading && users) {
+      // Wait for users to load before initializing session
+      initializeSession();
+    }
+  }, [initializeSession, isUsersLoading, processedUsers, users]);
 
   const contextValue: SessionContextType = {
     session,

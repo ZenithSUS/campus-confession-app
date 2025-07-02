@@ -1,6 +1,13 @@
 import axiosClient from "@/services/axios";
 
-export const getComments = () => axiosClient.get("/comments");
+export const getComments = (signal?: AbortSignal) => {
+  try {
+    return axiosClient.get("/comments", { signal, timeout: 10000 });
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
+};
 
 export const getCommentsByConfession = (id: string) =>
   axiosClient.get(`/comments/${id}`);

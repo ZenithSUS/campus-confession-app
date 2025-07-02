@@ -54,10 +54,14 @@ const Home = () => {
   }, [fetchedconfessions, fetchedLikes, fetchedComments]);
 
   const isDataLoaded = useMemo(() => {
+    if (error) return true;
+
     return !!fetchedconfessions && !!fetchedLikes && !!fetchedComments;
-  }, [fetchedconfessions, fetchedLikes, fetchedComments]);
+  }, [fetchedconfessions, fetchedLikes, fetchedComments, error]);
 
   const AnyLoading = useMemo(() => {
+    if (error) return false;
+
     return (
       isLoading ||
       isLoadingSession ||
@@ -65,7 +69,14 @@ const Home = () => {
       commentsLoading ||
       refreshing
     );
-  }, [isLoading, isLoadingSession, likesLoading, commentsLoading, refreshing]);
+  }, [
+    isLoading,
+    isLoadingSession,
+    likesLoading,
+    commentsLoading,
+    refreshing,
+    error,
+  ]);
 
   const displayedConfessions = useMemo(() => {
     let result = filteredConfessions;
@@ -102,7 +113,7 @@ const Home = () => {
         refetchLikes(),
         refetchComments(),
       ]);
-    } catch (error) {
+    } catch (error: any) {
       console.log("Error refreshing data:", error);
     } finally {
       setRefreshing(false);
@@ -129,22 +140,46 @@ const Home = () => {
     setFilterCategory(category);
   }, []);
 
+  // Show loading state
   if (AnyLoading || !isDataLoaded) {
     return (
       <View className="flex-1 items-center justify-center min-h-screen">
         <ActivityIndicator size="large" color={"#1C1C3A"} />
+        <Text className="mt-2 text-gray-600">Loading confessions...</Text>
       </View>
     );
   }
 
-  if (error) {
+  // Show error state (includes timeout and network errors)
+  if (!!error) {
+    // Check if it's a timeout or network error
+    const isTimeoutError =
+      error?.message?.includes("not responding") ||
+      error?.message?.includes("timeout");
+    const isNetworkError =
+      error?.message?.includes("connect to server") ||
+      error?.message?.includes("Network Error");
+
     return (
-      <View className="flex-1 items-center justify-center min-h-screen">
-        <View className="flex-col items-center gap-2">
-          <Text className="text-error text-center w-full">
-            Something went wrong: {error?.message}
+      <View className="flex-1 items-center justify-center min-h-screen px-4">
+        <View className="flex-col items-center gap-4">
+          <Text className="text-error text-center text-lg font-semibold">
+            {isTimeoutError
+              ? "Server is not responding"
+              : isNetworkError
+              ? "Connection failed"
+              : "Something went wrong"}
           </Text>
-          <Button onPress={onRefresh} title="Retry" />
+
+          <Text className="text-gray-600 text-center">
+            {isTimeoutError
+              ? "The server is taking too long to respond. Please try again."
+              : isNetworkError
+              ? "Please check your internet connection and try again."
+              : error?.message}
+          </Text>
+
+          <Button onPress={onRefresh} title="Try Again" />
         </View>
       </View>
     );

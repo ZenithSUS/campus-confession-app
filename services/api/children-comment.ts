@@ -1,5 +1,5 @@
+import axiosClient from "@/services/axios";
 import { CreateChildrenComment } from "@/utils/types";
-import axiosClient from "./axios";
 
 export const getChildrenComments = () => axiosClient.get("/child-comments");
 
