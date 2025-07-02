@@ -26,6 +26,7 @@ export const useCreateUser = (): UseMutationResult<
     onError: () => {
       throw new Error("Failed to create user");
     },
+    retry: 1,
   });
 };
 

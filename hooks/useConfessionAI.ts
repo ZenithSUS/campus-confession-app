@@ -1,5 +1,5 @@
 import { refineConfession } from "@/services/api/confession-ai";
-import { axiosError } from "@/utils/axios-error";
+import { networkAxiosError } from "@/utils/axios-error";
 import { RefineConfession } from "@/utils/types";
 import { useMutation, UseMutationResult } from "@tanstack/react-query";
 import { AxiosError } from "axios";
@@ -17,8 +17,7 @@ export const useRefineConfession = (): UseMutationResult<
         return response?.data;
       } catch (error) {
         const err = error as AxiosError;
-        // Handle different types of errors
-        return axiosError(err);
+        return networkAxiosError(err);
       }
     },
     onError: (error) => {
