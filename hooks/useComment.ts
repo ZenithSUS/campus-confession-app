@@ -63,11 +63,15 @@ export const useGetCommentsByConfession = (
     refetchOnWindowFocus: false,
     retry: (failedCount, error) => {
       if (error instanceof Error) {
-        return error.message.includes("Network Error") ? false : true;
+        retryAxiosError(failedCount, error as AxiosError);
+        if (error.message.includes("Network Error")) {
+          return false;
+        }
       }
 
       return failedCount < 2;
     },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     staleTime: 5 * 60 * 1000,
     networkMode: "offlineFirst",
   });

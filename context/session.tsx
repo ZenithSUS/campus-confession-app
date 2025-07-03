@@ -120,6 +120,7 @@ export const SessionProvider = ({
   // Refresh session
   const refreshSession = useCallback(async (): Promise<void> => {
     try {
+      console.log("Refreshing session...");
       const currentSession = await getCurrentSession();
       const sessionData = {
         $id: currentSession.$id,
@@ -131,6 +132,9 @@ export const SessionProvider = ({
       console.error("Failed to refresh session:", error);
       // If refresh fails, reinitialize
       await initializeSession();
+    } finally {
+      setIsLoading(false);
+      setIsInitialized(true);
     }
   }, [initializeSession]);
 

@@ -2,16 +2,21 @@ import { campuses } from "@/constants/campuses";
 import { useSession } from "@/context/session";
 import { useCreateConfession } from "@/hooks/useConfession";
 import { useRefineConfession } from "@/hooks/useConfessionAI";
+import {
+  getSingleData,
+  storeSingleData,
+} from "@/services/react-native-storage";
 import { CreateConfession, RefineConfession } from "@/utils/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { RelativePathString, router, usePathname } from "expo-router";
 import { ArrowBigLeftDash } from "lucide-react-native";
-import React, { useState, useTransition } from "react";
+import React, { useEffect, useState, useTransition } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   ActivityIndicator,
   Alert,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -22,11 +27,16 @@ import {
 import Picker from "react-native-picker-select";
 
 const NewConfession = () => {
+  const POST_COOLDOWN = 5 * 60 * 1000; // 5 minutes
   const pathname = usePathname();
-  const { session, isLoading: isSessionLoading } = useSession();
+  const { session, isLoading: isSessionLoading, refreshSession } = useSession();
   const { mutateAsync: refineConfession, error: refineError } =
     useRefineConfession();
+  const { mutateAsync: createConfession } = useCreateConfession();
+  const [isRefreshing, setRefreshing] = useState(false);
   const [refinedConfession, setRefinedConfession] = useState("");
+  const [isInCooldown, setIsInCooldown] = useState(false);
+  const [cooldownTimeLeft, setCooldownTimeLeft] = useState(0);
   const [isPending, startTransition] = useTransition();
   const [isRefined, setRefined] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -43,20 +53,118 @@ const NewConfession = () => {
   // Form for posting confession
   const postForm = useForm<CreateConfession>({
     defaultValues: {
-      user: session?.nickname || "",
-      userId: session?.$id || "",
+      user: session.nickname,
+      userId: session.$id,
       text: "",
       campus: "",
     },
   });
 
+  // Check cooldown status on component mount and set up timer
+  useEffect(() => {
+    checkCooldownStatus();
+  }, []);
+
+  // Cooldown timer effect
+  useEffect(() => {
+    let interval: Number;
+
+    if (isInCooldown) {
+      interval = setInterval(() => {
+        setCooldownTimeLeft((prev) => {
+          if (prev <= 1000) {
+            setIsInCooldown(false);
+            return 0;
+          }
+          return prev - 1000;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval as number);
+    };
+  }, [isInCooldown]);
+
+  // Check if user is in cooldown
+  const checkCooldownStatus = async () => {
+    try {
+      const lastPostTimeStr = await getSingleData("lastPostTime");
+      if (lastPostTimeStr) {
+        const lastPostTime = parseInt(lastPostTimeStr);
+        const now = Date.now();
+        const timeSinceLastPost = now - lastPostTime;
+
+        if (timeSinceLastPost < POST_COOLDOWN) {
+          const timeLeft = POST_COOLDOWN - timeSinceLastPost;
+          setIsInCooldown(true);
+          setCooldownTimeLeft(timeLeft);
+        } else {
+          setIsInCooldown(false);
+          setCooldownTimeLeft(0);
+        }
+      }
+    } catch (error) {
+      console.error("Error checking cooldown status:", error);
+    }
+  };
+
+  // Format time cooldown
+  const formatTime = (ms: number) => {
+    const minutes = Math.floor((ms % (60 * 60 * 1000)) / (60 * 1000));
+    const seconds = Math.floor((ms % (60 * 1000)) / 1000);
+    return `${minutes}m ${seconds}s`;
+  };
+
+  // Refresh session
+  const handleRefresh = async () => {
+    try {
+      setRefreshing(true);
+      await refreshSession();
+      // Also check cooldown status when refreshing
+      await checkCooldownStatus();
+    } catch (error) {
+      console.error("Refresh session error:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Submit confession
   const submitConfession = async (data: CreateConfession) => {
+    // Check cooldown before submitting
+    if (isInCooldown) {
+      Alert.alert(
+        "Cooldown Active",
+        `Please wait ${formatTime(
+          cooldownTimeLeft
+        )} before posting another confession.`,
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
     try {
       setApiError(null);
       startTransition(async () => {
         try {
-          await useCreateConfession(data);
+          await createConfession(data);
           queryClient.invalidateQueries({ queryKey: ["confessions"] });
+
+          // Store last post time and activate cooldown
+          const now = Date.now();
+          await storeSingleData("lastPostTime", now.toString());
+
+          // Set cooldown state
+          setIsInCooldown(true);
+          setCooldownTimeLeft(POST_COOLDOWN);
+
+          // Show success message
+          Alert.alert(
+            "Success",
+            "Your confession has been posted successfully!",
+            [{ text: "OK" }]
+          );
 
           // Only navigate if successful
           if (!isPending) {
@@ -80,6 +188,7 @@ const NewConfession = () => {
     }
   };
 
+  // Refine confession
   const handleRefine = async (data: RefineConfession) => {
     try {
       setApiError(null);
@@ -117,16 +226,19 @@ const NewConfession = () => {
     }
   };
 
+  // Navigate to another page
   const navigateTo = (path: string) => {
     if (pathname === path) return;
     router.replace(path as RelativePathString);
   };
 
+  // Clear error
   const clearError = () => {
     setApiError(null);
   };
 
-  if (isSessionLoading) {
+  // If loading session, show loading spinner
+  if (isSessionLoading || !session) {
     return (
       <View className="flex-1 justify-center items-center min-h-screen">
         <ActivityIndicator size={"large"} color={"#1C1C3A"} />
@@ -138,6 +250,9 @@ const NewConfession = () => {
     <ScrollView
       className="flex-1 bg-white px-4 py-2 flex-col gap-2"
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+      }
     >
       {/* Header Section */}
       <View className="flex-row items-center justify-between gap-2 py-2">
@@ -153,6 +268,18 @@ const NewConfession = () => {
           <Text>Back</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Cooldown Warning */}
+      {isInCooldown && (
+        <View className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 mb-4">
+          <Text className="font-medium text-yellow-800 text-center">
+            ⏰ Cooldown Active: {formatTime(cooldownTimeLeft)} remaining
+          </Text>
+          <Text className="text-sm text-yellow-600 text-center mt-1">
+            Please wait before posting another confession
+          </Text>
+        </View>
+      )}
 
       {/* Error Display */}
       {(apiError || refineError) && (
@@ -270,7 +397,7 @@ const NewConfession = () => {
                   value={value}
                   style={categoryStyle}
                   onValueChange={onChange}
-                  placeholder={{ label: "Select Campus", value: null }}
+                  placeholder={{ label: "Select Campus", value: "" }}
                   items={
                     campuses?.map((campus) => ({
                       label: campus.name,
@@ -310,12 +437,19 @@ const NewConfession = () => {
             <View className="flex-row items-center gap-2 mt-2">
               <Pressable
                 className="items-center justify-center p-2 rounded-xl flex-1"
-                style={[styles.postButton, isPending && styles.disabledButton]}
+                style={[
+                  styles.postButton,
+                  (isPending || isInCooldown) && styles.disabledButton,
+                ]}
                 onPress={postForm.handleSubmit(submitConfession)}
-                disabled={isPending}
+                disabled={isPending || isInCooldown}
               >
                 <Text className="text-white">
-                  {isPending ? "Posting..." : "Post Confession"}
+                  {isPending
+                    ? "Posting..."
+                    : isInCooldown
+                    ? `Wait ${formatTime(cooldownTimeLeft)}`
+                    : "Post Confession"}
                 </Text>
               </Pressable>
 

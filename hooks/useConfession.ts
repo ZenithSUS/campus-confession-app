@@ -93,17 +93,16 @@ export const useGetConfessionById = (
   });
 };
 
-export const useCreateConfession = (
-  data: CreateConfession
-): UseBaseMutationResult<
+export const useCreateConfession = (): UseBaseMutationResult<
   AxiosResponse<CreateConfession>,
   unknown,
   CreateConfession
 > => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: async (data: CreateConfession) => {
       try {
+        // React Query automatically provides signal for timeout/cancellation
         return await createConfession(data);
       } catch (error) {
         const err = error as AxiosError;

@@ -38,6 +38,7 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   RefreshControl,
   ScrollView,
   Text,
@@ -63,21 +64,25 @@ const Confession = () => {
     data: likes,
     isLoading: likeLoading,
     refetch: refetchLikes,
+    error: likeError,
   } = useGetLikes();
   const {
     data: comments,
     isLoading: commentsLoading,
     refetch: refetchComments,
+    error: commentError,
   } = useGetComments();
   const {
     data: confessionComments,
     isLoading: confessionCommentsLoading,
     refetch: refetchConfessionComments,
+    error: confessionCommentsError,
   } = useGetCommentsByConfession(id as string);
   const {
     data: replies,
     isLoading: replyLoading,
     refetch: refetchReplies,
+    error: replyError,
   } = useGetChildrenComments();
 
   // Local state
@@ -113,7 +118,8 @@ const Confession = () => {
       likeLoading ||
       commentsLoading ||
       confessionCommentsLoading ||
-      replyLoading
+      replyLoading ||
+      refreshing
     );
   }, [
     confessionLoading,
@@ -121,7 +127,18 @@ const Confession = () => {
     commentsLoading,
     confessionCommentsLoading,
     replyLoading,
+    refreshing,
   ]);
+
+  const isAnyError = useMemo(() => {
+    return (
+      !!error ||
+      !!likeError ||
+      !!commentError ||
+      !!confessionCommentsError ||
+      !!replyError
+    );
+  }, [error, likeError, commentError, confessionCommentsError, replyError]);
 
   // Memoized processed data
   const processedPost = useMemo(() => {
@@ -303,22 +320,24 @@ const Confession = () => {
     );
   }
 
-  if (error) {
+  if (isAnyError) {
     return (
-      <View className="flex-1 items-center justify-center min-h-screen px-4">
+      <View className="flex-1 items-center justify-center min-h-screen px-4 gap-2">
         <Text className="font-bold text-red-600 text-center">
-          {error.message}
+          {error?.message}
         </Text>
-        <TouchableOpacity
-          className="mt-4 px-4 py-2 bg-blue-500 rounded"
-          onPress={onRefresh}
+        <Pressable
+          className="mt-4 px-4 py-2 rounded-xl"
+          style={{ backgroundColor: "#1C1C3A" }}
+          onPress={() => onRefresh()}
         >
-          <Text className="text-white">Retry</Text>
-        </TouchableOpacity>
+          <Text className="text-white">Refresh</Text>
+        </Pressable>
       </View>
     );
   }
 
+  // If confession is not found
   if (!confession || !confessionComments) {
     return (
       <View className="flex-1 px-4 py-2">
@@ -368,7 +387,16 @@ const Confession = () => {
           {processedPost && (
             <View className="flex col gap-2 shadow p-5 rounded-xl">
               <View className="flex-col gap-2 py-2">
-                <Text className="font-bold">{processedPost.user}</Text>
+                <View className="flex-row justify-between">
+                  <Text className="font-bold">
+                    {processedPost.user} :{" "}
+                    <Text className="font-normal">
+                      {timeDifference(processedPost.$createdAt)}
+                      {" ago"}
+                    </Text>
+                  </Text>
+                  <Text>{processedPost.campus}</Text>
+                </View>
                 <Text>{processedPost.text}</Text>
               </View>
 

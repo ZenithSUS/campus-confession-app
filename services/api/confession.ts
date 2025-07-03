@@ -34,5 +34,11 @@ export const createConfession = (
   }
 };
 
-export const deleteConfession = (id: string) =>
-  axiosClient.delete(`/confessions/${id}`);
+export const deleteConfession = (id: string, signal?: AbortSignal) => {
+  try {
+    return axiosClient.delete(`/confessions/${id}`, { signal, timeout: 10000 });
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
+};

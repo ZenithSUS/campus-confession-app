@@ -15,7 +15,7 @@ const ConfessionCard = ({ confession }: { confession: ShowConfessions }) => {
   const isAuthor = confession.user === session.nickname;
   const isLiked = useMemo(() => {
     return confession.likesData.some((like) => like.userId === session.$id);
-  }, [confession.likesData]);
+  }, [confession.likesData, session.$id]);
 
   const handleLike = () => {
     try {
@@ -42,7 +42,7 @@ const ConfessionCard = ({ confession }: { confession: ShowConfessions }) => {
     <View className="flex-1 px-2 py-4">
       <View className="flex-col shadow gap-2 p-5 rounded-xl">
         <View className="flex-row justify-between items-center">
-          <Text className="font-bold">
+          <Text className="font-bold" numberOfLines={1}>
             {isAuthor ? `You (${confession.user})` : confession.user}:{" "}
             <Text className="font-normal">
               {timeDifference(confession.$createdAt)} ago

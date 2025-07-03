@@ -57,9 +57,9 @@ export const useCreateLike = (): UseBaseMutationResult<
     mutationFn: (data: CreateLike) => createLike(data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["likes"] }),
     onError: () => {
-      throw new Error("Failed to create like");
+      console.error("Failed to create like");
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["likes"] }),
+    retry: false,
   });
 };
 
@@ -78,8 +78,8 @@ export const useGetLikesByConfession = (
 export const useGetLikesByComment = (id: string) =>
   useQuery<AxiosResponse<Likes[]>>({
     queryKey: ["likes", id],
-    queryFn: async () => {
-      const { data } = await getLikesByConfession(id);
+    queryFn: async ({ signal }) => {
+      const { data } = await getLikesByConfession(id, signal);
       return data;
     },
   });
@@ -103,8 +103,8 @@ export const useDeleteLike = (): UseBaseMutationResult<
     mutationFn: (id: string) => deleteLike(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["likes"] }),
     onError: () => {
-      throw new Error("Failed to delete like");
+      console.error("Failed to delete like");
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["likes"] }),
+    retry: false,
   });
 };

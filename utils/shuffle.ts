@@ -1,3 +1,3 @@
-export function shuffleData<T>(data: T[]) {
-  return [...data].sort(() => Math.random() - 0.5);
+export function shuffleData<T>(data: T[], seed: number) {
+  return [...data].sort(() => seed);
 }

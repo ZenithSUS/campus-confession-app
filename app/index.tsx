@@ -6,21 +6,22 @@ import { useGetComments } from "@/hooks/useComment";
 import { useGetConfession } from "@/hooks/useConfession";
 import { useGetLikes } from "@/hooks/useLike";
 import { posts } from "@/utils/posts";
-import { shuffleData } from "@/utils/shuffle";
 import { ShowConfessions } from "@/utils/types";
 import { useRouter } from "expo-router";
+import { Feather } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Button,
   FlatList,
+  Pressable,
   RefreshControl,
   Text,
   View,
 } from "react-native";
 
 const Home = () => {
-  const { isLoading: isLoadingSession } = useSession();
+  const { isLoading: isLoadingSession, refreshSession } = useSession();
   const {
     data: fetchedconfessions,
     isLoading,
@@ -44,14 +45,16 @@ const Home = () => {
   >([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
+  const [randomNumber, setRandomNumber] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
     if (fetchedconfessions && fetchedLikes && fetchedComments) {
       const data = posts(fetchedconfessions, fetchedLikes, fetchedComments);
-      setFilteredConfessions(shuffleData(data as ShowConfessions[]));
+      setRandomNumber(Math.random() - 0.5);
+      setFilteredConfessions(data);
     }
-  }, [fetchedconfessions, fetchedLikes, fetchedComments]);
+  }, [fetchedconfessions, fetchedLikes, fetchedComments, error]);
 
   const isDataLoaded = useMemo(() => {
     if (error) return true;
@@ -60,7 +63,7 @@ const Home = () => {
   }, [fetchedconfessions, fetchedLikes, fetchedComments, error]);
 
   const AnyLoading = useMemo(() => {
-    if (error) return false;
+    if (!!error) return false;
 
     return (
       isLoading ||
@@ -82,14 +85,14 @@ const Home = () => {
     let result = filteredConfessions;
 
     if (searchQuery) {
-      result = result.filter(
+      return (result = result.filter(
         (confession) =>
           confession.text?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           confession.campus
             ?.toLowerCase()
             .includes(searchQuery.toLowerCase()) ||
           confession.user?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      ));
     }
 
     if (filterCategory) {
@@ -97,9 +100,9 @@ const Home = () => {
         return filteredConfessions;
       }
 
-      result = result.filter(
+      return (result = result.filter(
         (confession) => confession.campus === filterCategory
-      );
+      ));
     }
 
     return result;
@@ -112,6 +115,7 @@ const Home = () => {
         refetchConfession(),
         refetchLikes(),
         refetchComments(),
+        refreshSession(),
       ]);
     } catch (error: any) {
       console.log("Error refreshing data:", error);
@@ -226,11 +230,15 @@ const Home = () => {
         initialNumToRender={10}
       />
 
-      <View className="bg-[#1C1C3A] p-3 rounded-full mt-4">
-        <Button
-          title="+ Create Confession"
+      <View className="p-3 mt-4">
+        <Pressable
+          className="flex-row items-center justify-center px-4 py-2 rounded-full gap-2"
+          style={{ backgroundColor: "#1C1C3A" }}
           onPress={() => router.push("/new-confession")}
-        />
+        >
+          <Feather size={24} color={"#fff"} />
+          <Text className="text-white font-semibold ml-2">New Confession</Text>
+        </Pressable>
       </View>
     </View>
   );

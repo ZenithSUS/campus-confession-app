@@ -23,5 +23,7 @@ export const useRefineConfession = (): UseMutationResult<
     onError: (error) => {
       console.error("Mutation error:", error);
     },
+    retry: 1,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 };
