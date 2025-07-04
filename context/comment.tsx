@@ -11,15 +11,13 @@ type CommentState = {
   id: string;
   author: string;
   type: string;
-  comment: string;
-  reply: string;
+  content: string;
 };
 
 type CommentAction =
   | { type: "SET_TYPE"; payload: string }
   | { type: "SET_AUTHOR"; payload: string }
-  | { type: "SET_COMMENT"; payload: string }
-  | { type: "SET_REPLY"; payload: string }
+  | { type: "SET_CONTENT"; payload: string }
   | { type: "SET_ID"; payload: string }
   | { type: "RESET" };
 
@@ -27,8 +25,7 @@ const initialState: CommentState = {
   id: "",
   author: "",
   type: "",
-  comment: "",
-  reply: "",
+  content: "",
 };
 
 const commentReducer = (
@@ -42,10 +39,8 @@ const commentReducer = (
       return { ...state, author: action.payload };
     case "SET_TYPE":
       return { ...state, type: action.payload };
-    case "SET_COMMENT":
-      return { ...state, comment: action.payload };
-    case "SET_REPLY":
-      return { ...state, reply: action.payload };
+    case "SET_CONTENT":
+      return { ...state, content: action.payload };
     case "RESET":
       return initialState;
     default:

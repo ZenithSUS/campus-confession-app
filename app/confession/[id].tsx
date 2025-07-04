@@ -11,6 +11,7 @@ import {
   useGetCommentsByConfession,
 } from "@/hooks/useComment";
 import { useGetConfessionById } from "@/hooks/useConfession";
+import { useGenerateComment } from "@/hooks/useConfessionAI";
 import { useCreateLike, useDeleteLike, useGetLikes } from "@/hooks/useLike";
 import { timeDifference } from "@/utils/calculate-time";
 import { commentData } from "@/utils/comments";
@@ -19,8 +20,10 @@ import { Comments, CreateComment } from "@/utils/types";
 import { router, useLocalSearchParams } from "expo-router";
 import {
   ArrowBigLeftDash,
+  CogIcon,
   Heart,
   Notebook,
+  Send,
   TextIcon,
 } from "lucide-react-native";
 import React, {
@@ -33,7 +36,6 @@ import React, {
 import { Controller, useForm } from "react-hook-form";
 import {
   ActivityIndicator,
-  Button,
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
@@ -59,7 +61,6 @@ const Confession = () => {
     refetch: refetchConfession,
     error,
   } = useGetConfessionById(id as string);
-
   const {
     data: likes,
     isLoading: likeLoading,
@@ -86,6 +87,7 @@ const Confession = () => {
   } = useGetChildrenComments();
 
   // Local state
+  const [apiError, setApiError] = useState<string | null>(null);
   const [openReplyId, setOpenReplyId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [keyboardOffSet, setKeyboardOffSet] = useState(0);
@@ -96,13 +98,21 @@ const Confession = () => {
   const { mutateAsync: createLike } = useCreateLike();
   const { mutateAsync: deleteLike } = useDeleteLike();
   const { mutateAsync: createChildrenComment } = useCreateChildenComment();
+  const { mutateAsync: generateComment, error: generateCommentError } =
+    useGenerateComment();
 
   // Form setup
-  const { control, handleSubmit, reset } = useForm<CreateComment>({
+  const commentForm = useForm<CreateComment>({
     defaultValues: {
       confession: "",
       author: "",
       content: "",
+    },
+  });
+
+  const generateCommentForm = useForm({
+    defaultValues: {
+      input: "",
     },
   });
 
@@ -161,12 +171,12 @@ const Confession = () => {
   const handleReset = useCallback(() => {
     dispatch({ type: "RESET" });
     dispatch({ type: "SET_TYPE", payload: "comment" });
-    reset({
+    commentForm.reset({
       confession: id as string,
       author: session?.nickname || "",
       content: "",
     });
-  }, [dispatch, reset, id, session?.nickname]);
+  }, [dispatch, commentForm.reset, id, session?.nickname]);
 
   // Like handler
   const handleLike = useCallback(async () => {
@@ -198,9 +208,41 @@ const Confession = () => {
     }
   }, [confession, session, isLiked, deleteLike, createLike, refetchLikes]);
 
+  // GenerateComment handler
+  const handleGenerateComment = useCallback(async () => {
+    startTransition(async () => {
+      try {
+        let data = {
+          input: generateCommentForm.getValues().input,
+        };
+
+        // Use the content from state if we're replying
+        if (state.type === "reply" && state.content) {
+          data.input = state.content;
+        }
+
+        const response = await generateComment(data);
+
+        if (response?.output) {
+          commentForm.setValue("content", response.output);
+        }
+      } catch (error) {
+        console.error("Error generating comment:", error);
+        setApiError("Failed to generate comment. Please try again.");
+      }
+    });
+  }, [
+    generateComment,
+    state.content,
+    state.type,
+    generateCommentForm,
+    commentForm,
+  ]);
+
   // Comment submission handler
   const submitComment = useCallback(
     async (data: CreateComment) => {
+      setApiError(null);
       if (!session) return;
 
       try {
@@ -224,6 +266,10 @@ const Confession = () => {
         });
       } catch (error) {
         console.error("Error submitting comment:", error);
+        setApiError("Failed to submit comment. Please try again.");
+      } finally {
+        dispatch({ type: "RESET" });
+        dispatch({ type: "SET_TYPE", payload: "comment" });
       }
       Keyboard.dismiss();
     },
@@ -290,13 +336,19 @@ const Confession = () => {
   // Initialize form
   useEffect(() => {
     if (id && session?.nickname) {
-      reset({
+      commentForm.reset({
         confession: id as string,
         author: session.nickname,
         content: "",
       });
     }
-  }, [id, session?.nickname, reset]);
+  }, [id, session?.nickname, commentForm.reset]);
+
+  useEffect(() => {
+    if (processedPost?.text) {
+      generateCommentForm.setValue("input", processedPost?.text);
+    }
+  }, [processedPost?.text, dispatch]);
 
   // Render comment item - moved before any conditional returns
   const renderCommentItem = useCallback(
@@ -311,7 +363,7 @@ const Confession = () => {
   );
 
   // Early returns after all hooks are defined
-  if (isAnyLoading) {
+  if (isAnyLoading || !isDataLoaded || !processedPost) {
     return (
       <View className="flex-1 items-center justify-center min-h-screen">
         <ActivityIndicator size="large" color="#1C1C3A" />
@@ -452,10 +504,10 @@ const Confession = () => {
       </ScrollView>
 
       {/* Comment Input */}
-      <View className="gap-2 bg-gray-100 px-4 py-2 rounded-xl">
+      <View className="flex-col gap-2 bg-gray-100 px-4 py-2 rounded-xl">
         <Text className="font-bold">Leave a comment</Text>
         <Controller
-          control={control}
+          control={commentForm.control}
           name="content"
           rules={{ required: true }}
           render={({ field: { onChange, onBlur, value } }) => (
@@ -469,25 +521,65 @@ const Confession = () => {
               numberOfLines={4}
               multiline
               value={value}
+              editable={!isPending}
               onBlur={onBlur}
               onChangeText={onChange}
             />
           )}
         />
-        <TouchableOpacity activeOpacity={0.7}>
-          <Button
-            title={
-              state.type === "comment" ? "Comment" : `Reply to ${state.author}`
-            }
-            onPress={handleSubmit(submitComment)}
+
+        {/* Error API Message */}
+        {commentForm.formState.errors.content && (
+          <View className="flex-row items-center gap-2">
+            <Text style={{ color: "red" }}>Comment field is required</Text>
+          </View>
+        )}
+
+        {(apiError || generateCommentError) && (
+          <Text style={{ color: "red" }}>
+            {apiError ||
+              generateCommentError?.message ||
+              "Something went wrong"}
+          </Text>
+        )}
+
+        <View className="flex-row items-center py-2 gap-2">
+          {/* Comment Button */}
+          <Pressable
+            onPress={commentForm.handleSubmit(submitComment)}
             disabled={isPending}
-          />
-        </TouchableOpacity>
+            className="flex-row justify-center items-center px-4 py-2 gap-2 rounded-full flex-1"
+            style={{ backgroundColor: isPending ? "#6B7280" : "#1C1C3A" }}
+          >
+            <Send size={18} color="white" />
+            <Text className="font-bold text-lg text-white">
+              {state.type === "comment" ? "Comment" : "Reply"}
+            </Text>
+          </Pressable>
+
+          {/* Generate Reply Button */}
+          <Pressable
+            onPress={generateCommentForm.handleSubmit(handleGenerateComment)}
+            disabled={isPending}
+            className="flex-row justify-center items-center px-4 py-2 rounded-full gap-2"
+            style={{ backgroundColor: isPending ? "#6B7280" : "#1C1C3A" }}
+          >
+            <CogIcon size={18} color="white" />
+            <Text className="font-bold text-lg text-white">Generate</Text>
+          </Pressable>
+        </View>
 
         {state.type === "reply" && (
-          <TouchableOpacity activeOpacity={0.7}>
-            <Button title="Cancel" onPress={handleReset} />
-          </TouchableOpacity>
+          <View className="flex-row items-center gap-2">
+            {/* Cancel Reply Button */}
+            <Pressable
+              onPress={handleReset}
+              className="flex-row justify-center items-center px-4 py-2 rounded-full gap-2 flex-1"
+              style={{ backgroundColor: "#1C1C3A" }}
+            >
+              <Text className="font-bold text-lg text-white">Cancel</Text>
+            </Pressable>
+          </View>
         )}
       </View>
     </KeyboardAvoidingView>

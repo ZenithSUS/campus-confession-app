@@ -32,6 +32,7 @@ const CommentCard = ({
   const handleReply = () => {
     dispatch({ type: "SET_ID", payload: comment.$id });
     dispatch({ type: "SET_TYPE", payload: "reply" });
+    dispatch({ type: "SET_CONTENT", payload: comment.content });
     dispatch({ type: "SET_AUTHOR", payload: comment.author });
 
     if (isShowReply) {
@@ -44,8 +45,15 @@ const CommentCard = ({
   };
 
   const handleShowReplies = () => {
+    dispatch({ type: "SET_ID", payload: comment.$id });
+    dispatch({ type: "SET_TYPE", payload: "reply" });
+    dispatch({ type: "SET_CONTENT", payload: comment.content });
+    dispatch({ type: "SET_AUTHOR", payload: comment.author });
+
     if (isShowReply) {
       setOpenReplyId(null);
+      dispatch({ type: "RESET" });
+      dispatch({ type: "SET_TYPE", payload: "comment" });
     } else {
       setOpenReplyId(comment.$id);
     }

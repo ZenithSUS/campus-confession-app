@@ -41,7 +41,7 @@ export const SessionProvider = ({
 
   // Hooks
   const { mutateAsync: createUser } = useCreateUser();
-  const { data: users, isLoading: isUsersLoading } = useGetUsers();
+  const { data: users, isLoading: isUsersLoading, error } = useGetUsers();
 
   const processedUsers = useMemo(() => {
     if (!isUsersLoading && users) return users;
@@ -155,7 +155,12 @@ export const SessionProvider = ({
       // Wait for users to load before initializing session
       initializeSession();
     }
-  }, [initializeSession, isUsersLoading, processedUsers, users]);
+
+    if (!!error) {
+      setIsLoading(false);
+      setIsInitialized(true);
+    }
+  }, [initializeSession, isUsersLoading, processedUsers, users, error]);
 
   const contextValue: SessionContextType = {
     session,

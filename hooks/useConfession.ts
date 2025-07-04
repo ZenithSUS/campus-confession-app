@@ -4,7 +4,7 @@ import {
   getConfession,
   getConfessions,
 } from "@/services/api/confession";
-import { networkAxiosError } from "@/utils/axios-error";
+import { networkAxiosError, retryAxiosError } from "@/utils/axios-error";
 import { Confessions, CreateConfession, ShowConfessions } from "@/utils/types";
 import {
   QueryObserverResult,
@@ -32,19 +32,9 @@ export const useGetConfession = (): QueryObserverResult<ShowConfessions[]> => {
     retry: (failureCount, error) => {
       // Don't retry on timeout or network errors after 2 attempts
       if (error instanceof Error) {
-        if (
-          error.message.includes("timeout") ||
-          error.message.includes("not responding") ||
-          error.message.includes("connect to server")
-        ) {
-          console.log(
-            `API timeout/network error - attempt ${failureCount + 1}`
-          );
-          return failureCount < 1; // Only retry once for timeouts
-        }
-
+        retryAxiosError(failureCount, error as AxiosError);
         if (error.message.includes("Network Error")) {
-          return false; // Don't retry network errors
+          return false;
         }
       }
 

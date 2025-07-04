@@ -434,7 +434,7 @@ const NewConfession = () => {
               <Text style={{ color: "red" }}>Confession text is required</Text>
             )}
 
-            <View className="flex-row items-center gap-2 mt-2">
+            <View className="flex-row items-center  gap-2 mt-2">
               <Pressable
                 className="items-center justify-center p-2 rounded-xl flex-1"
                 style={[

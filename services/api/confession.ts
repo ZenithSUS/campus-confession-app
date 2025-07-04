@@ -6,7 +6,15 @@ export const getConfessions = async (
   signal?: AbortSignal
 ): Promise<AxiosResponse<ShowConfessions[]>> => {
   try {
-    return await axiosClient.get("/confessions", { signal, timeout: 10000 });
+    const response = await axiosClient.get("/confessions", {
+      signal,
+      timeout: 10000,
+    });
+
+    if (!response.statusText.includes("OK")) {
+      throw new Error(response.statusText);
+    }
+    return response;
   } catch (error) {
     console.error("API Error:", error);
     throw error;

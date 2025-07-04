@@ -26,17 +26,19 @@ const Home = () => {
     data: fetchedconfessions,
     isLoading,
     refetch: refetchConfession,
-    error,
+    error: confessionError,
   } = useGetConfession();
   const {
     data: fetchedLikes,
     isLoading: likesLoading,
     refetch: refetchLikes,
+    error: likesError,
   } = useGetLikes();
   const {
     data: fetchedComments,
     isLoading: commentsLoading,
     refetch: refetchComments,
+    error: commentsError,
   } = useGetComments();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -54,16 +56,20 @@ const Home = () => {
       setRandomNumber(Math.random() - 0.5);
       setFilteredConfessions(data);
     }
-  }, [fetchedconfessions, fetchedLikes, fetchedComments, error]);
+  }, [fetchedconfessions, fetchedLikes, fetchedComments]);
+
+  const hasError = useMemo(() => {
+    return confessionError || likesError || commentsError;
+  }, [confessionError, likesError, commentsError]);
 
   const isDataLoaded = useMemo(() => {
-    if (error) return true;
+    if (hasError) return true;
 
     return !!fetchedconfessions && !!fetchedLikes && !!fetchedComments;
-  }, [fetchedconfessions, fetchedLikes, fetchedComments, error]);
+  }, [fetchedconfessions, fetchedLikes, fetchedComments, hasError]);
 
   const AnyLoading = useMemo(() => {
-    if (!!error) return false;
+    if (hasError) return false;
 
     return (
       isLoading ||
@@ -78,7 +84,7 @@ const Home = () => {
     likesLoading,
     commentsLoading,
     refreshing,
-    error,
+    hasError,
   ]);
 
   const displayedConfessions = useMemo(() => {
@@ -155,14 +161,17 @@ const Home = () => {
   }
 
   // Show error state (includes timeout and network errors)
-  if (!!error) {
+  if (hasError) {
+    // Get the first available error
+    const currentError = confessionError || likesError || commentsError;
+
     // Check if it's a timeout or network error
     const isTimeoutError =
-      error?.message?.includes("not responding") ||
-      error?.message?.includes("timeout");
+      currentError?.message?.includes("not responding") ||
+      currentError?.message?.includes("timeout");
     const isNetworkError =
-      error?.message?.includes("connect to server") ||
-      error?.message?.includes("Network Error");
+      currentError?.message?.includes("connect to server") ||
+      currentError?.message?.includes("Network Error");
 
     return (
       <View className="flex-1 items-center justify-center min-h-screen px-4">
@@ -180,7 +189,7 @@ const Home = () => {
               ? "The server is taking too long to respond. Please try again."
               : isNetworkError
               ? "Please check your internet connection and try again."
-              : error?.message}
+              : currentError?.message || "An unexpected error occurred"}
           </Text>
 
           <Button onPress={onRefresh} title="Try Again" />
