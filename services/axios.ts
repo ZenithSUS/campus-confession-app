@@ -4,6 +4,7 @@ const baseUrl =
   process.env.NODE_ENV === "development"
     ? process.env.EXPO_PUBLIC_DEV_API_BASE_URL
     : process.env.EXPO_PUBLIC_API_BASE_URL;
+console.log(baseUrl);
 
 if (!baseUrl) {
   throw new Error("PUBLIC_EXPO_API_BASE_URL is not defined");
