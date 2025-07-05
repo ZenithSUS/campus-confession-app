@@ -53,7 +53,7 @@ const ConfessionCard = ({ confession }: { confession: ShowConfessions }) => {
         </View>
 
         <Link href={`/confession/${confession.$id}`} className="py-2">
-          <Text numberOfLines={2}>{confession.text}</Text>
+          <Text numberOfLines={3}>{confession.text}</Text>
         </Link>
 
         {/* Actions */}

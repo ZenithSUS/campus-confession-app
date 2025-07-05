@@ -2,7 +2,7 @@ import axios from "axios";
 
 const baseUrl =
   process.env.NODE_ENV === "development"
-    ? "http://localhost:3030/api"
+    ? process.env.EXPO_PUBLIC_DEV_API_BASE_URL
     : process.env.EXPO_PUBLIC_API_BASE_URL;
 
 if (!baseUrl) {

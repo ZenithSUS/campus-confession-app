@@ -248,7 +248,7 @@ const NewConfession = () => {
 
   return (
     <ScrollView
-      className="flex-1 bg-white px-4 py-2 flex-col gap-2"
+      className="flex-1 bg-white px-2 py-2 flex-col gap-2"
       showsVerticalScrollIndicator={false}
       refreshControl={
         <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
@@ -256,9 +256,7 @@ const NewConfession = () => {
     >
       {/* Header Section */}
       <View className="flex-row items-center justify-between gap-2 py-2">
-        <TouchableOpacity className="flex-row items-center gap-2">
-          <Text className="font-bold text-lg">New Confession</Text>
-        </TouchableOpacity>
+        <Text className="font-bold text-lg">New Confession</Text>
 
         <TouchableOpacity
           className="flex-row items-center gap-2"

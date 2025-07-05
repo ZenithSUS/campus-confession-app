@@ -5,11 +5,12 @@ import { useGetLikes } from "@/hooks/useLike";
 import { posts } from "@/utils/posts";
 import { ShowConfessions } from "@/utils/types";
 import { router } from "expo-router";
+import { EyeIcon } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Button,
   FlatList,
+  Pressable,
   RefreshControl,
   Text,
   View,
@@ -126,7 +127,14 @@ const TopConfessions = () => {
       />
 
       <View className="p-3 mt-2">
-        <Button title="See All" onPress={() => router.push("/")} />
+        <Pressable
+          onPress={() => router.push("/")}
+          className="flex-1 flex-row rounded-full py-2 items-center justify-center gap-2 text-white"
+          style={{ backgroundColor: "#1C1C3A" }}
+        >
+          <EyeIcon size={18} />
+          <Text className="text-white font-semibold">View All</Text>
+        </Pressable>
       </View>
     </View>
   );

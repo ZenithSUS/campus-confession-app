@@ -180,21 +180,23 @@ const Confession = () => {
 
   // Like handler
   const handleLike = useCallback(async () => {
-    if (!confession || !session) return;
+    if (!processedPost || !session) return;
 
     try {
       startTransition(async () => {
         if (isLiked) {
-          const likeId = confession.likesData?.find(
+          const likeId = processedPost.likesData?.find(
             (like) => like.userId === session.$id
           )?.$id;
 
           if (likeId) {
             await deleteLike(likeId);
+          } else {
+            throw new Error("Like not found");
           }
         } else {
           const data = {
-            confessionId: confession.$id,
+            confessionId: processedPost.$id,
             userId: session.$id,
           };
           await createLike(data);
@@ -210,6 +212,7 @@ const Confession = () => {
 
   // GenerateComment handler
   const handleGenerateComment = useCallback(async () => {
+    setApiError(null);
     startTransition(async () => {
       try {
         let data = {
@@ -225,6 +228,8 @@ const Confession = () => {
 
         if (response?.output) {
           commentForm.setValue("content", response.output);
+        } else {
+          throw new Error("No data received from AI");
         }
       } catch (error) {
         console.error("Error generating comment:", error);
@@ -373,10 +378,24 @@ const Confession = () => {
   }
 
   if (isAnyError) {
+    const currentError = error || likeError || commentError;
+
+    const isTimeoutError =
+      currentError?.message?.includes("not responding") ||
+      currentError?.message?.includes("timeout");
+
+    const isNetworkError =
+      currentError?.message?.includes("connect to server") ||
+      currentError?.message?.includes("Network Error");
+
     return (
       <View className="flex-1 items-center justify-center min-h-screen px-4 gap-2">
-        <Text className="font-bold text-red-600 text-center">
-          {error?.message}
+        <Text className="font-bold text-center" style={{ color: "red" }}>
+          {isTimeoutError
+            ? "Server is not responding. Please try again."
+            : isNetworkError
+            ? "Connection error. Please check your internet connection."
+            : "Something went wrong. Please try again."}
         </Text>
         <Pressable
           className="mt-4 px-4 py-2 rounded-xl"
@@ -552,35 +571,34 @@ const Confession = () => {
             style={{ backgroundColor: isPending ? "#6B7280" : "#1C1C3A" }}
           >
             <Send size={18} color="white" />
-            <Text className="font-bold text-lg text-white">
+            <Text className="font-semibold text-white">
               {state.type === "comment" ? "Comment" : "Reply"}
             </Text>
           </Pressable>
 
-          {/* Generate Reply Button */}
-          <Pressable
-            onPress={generateCommentForm.handleSubmit(handleGenerateComment)}
-            disabled={isPending}
-            className="flex-row justify-center items-center px-4 py-2 rounded-full gap-2"
-            style={{ backgroundColor: isPending ? "#6B7280" : "#1C1C3A" }}
-          >
-            <CogIcon size={18} color="white" />
-            <Text className="font-bold text-lg text-white">Generate</Text>
-          </Pressable>
+          {state.type === "reply" && (
+            <View className="flex-row items-center gap-2">
+              {/* Cancel Reply Button */}
+              <Pressable
+                onPress={handleReset}
+                className="flex-row justify-center items-center px-4 py-2 rounded-full gap-2"
+                style={{ backgroundColor: "#1C1C3A" }}
+              >
+                <Text className="font-semibold text-white">Cancel</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
-
-        {state.type === "reply" && (
-          <View className="flex-row items-center gap-2">
-            {/* Cancel Reply Button */}
-            <Pressable
-              onPress={handleReset}
-              className="flex-row justify-center items-center px-4 py-2 rounded-full gap-2 flex-1"
-              style={{ backgroundColor: "#1C1C3A" }}
-            >
-              <Text className="font-bold text-lg text-white">Cancel</Text>
-            </Pressable>
-          </View>
-        )}
+        {/* Generate Reply Button */}
+        <Pressable
+          onPress={generateCommentForm.handleSubmit(handleGenerateComment)}
+          disabled={isPending}
+          className="flex-row justify-center items-center px-4 py-2 rounded-full gap-2"
+          style={{ backgroundColor: isPending ? "#6B7280" : "#1C1C3A" }}
+        >
+          <CogIcon size={18} color="white" />
+          <Text className="font-semibold text-white">Generate</Text>
+        </Pressable>
       </View>
     </KeyboardAvoidingView>
   );

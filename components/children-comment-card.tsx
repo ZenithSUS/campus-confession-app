@@ -54,10 +54,14 @@ const ChildrenCommentItems = ({ item }: { item: ShowChildrenComment }) => {
           <TouchableOpacity
             className="flex-row items-center gap-2 cursor-pointer"
             onPress={handleLike}
+            activeOpacity={0.7}
+            disabled={isPending}
           >
             <Heart
               size={18}
               color={isPending ? "gray" : isLiked ? "red" : "#6b7280"}
+              strokeWidth={2}
+              disabled={isPending}
             />
             <Text>{item.likesLength}</Text>
           </TouchableOpacity>
