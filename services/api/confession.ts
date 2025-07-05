@@ -11,12 +11,12 @@ export const getConfessions = async (
       timeout: 10000,
     });
 
-    if (!response.statusText.includes("OK")) {
-      throw new Error(response.statusText);
-    }
     return response;
-  } catch (error) {
-    console.error("API Error:", error);
+  } catch (error: any) {
+    console.error(
+      "API Error:",
+      error?.response?.data || error.message || error
+    );
     throw error;
   }
 };
