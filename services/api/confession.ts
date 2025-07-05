@@ -11,6 +11,10 @@ export const getConfessions = async (
       timeout: 10000,
     });
 
+    if (response.status !== 200) {
+      throw new Error("Failed to fetch confessions");
+    }
+
     return response;
   } catch (error: any) {
     console.error(
