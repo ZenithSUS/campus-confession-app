@@ -1,7 +1,7 @@
 import { campuses } from "@/constants/campuses";
 import { useSession } from "@/context/session";
 import { useCreateConfession } from "@/hooks/useConfession";
-import { useRefineConfession } from "@/hooks/useConfessionAI";
+import { useGenerateTags, useRefineConfession } from "@/hooks/useConfessionAI";
 import {
   getSingleData,
   storeSingleData,
@@ -10,7 +10,7 @@ import { CreateConfession, RefineConfession } from "@/utils/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { RelativePathString, router, usePathname } from "expo-router";
 import { ArrowBigLeftDash } from "lucide-react-native";
-import React, { useEffect, useState, useTransition } from "react";
+import React, { useCallback, useEffect, useState, useTransition } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   ActivityIndicator,
@@ -26,13 +26,19 @@ import {
 } from "react-native";
 import Picker from "react-native-picker-select";
 
+type NewConfession = CreateConfession & {
+  inputTag: string;
+};
+
 const NewConfession = () => {
   const POST_COOLDOWN = 5 * 60 * 1000; // 5 minutes
   const pathname = usePathname();
   const { session, isLoading: isSessionLoading, refreshSession } = useSession();
   const { mutateAsync: refineConfession, error: refineError } =
     useRefineConfession();
+  const { mutateAsync: generateTags } = useGenerateTags();
   const { mutateAsync: createConfession } = useCreateConfession();
+  const [tags, setTags] = useState<string[]>([]);
   const [isRefreshing, setRefreshing] = useState(false);
   const [refinedConfession, setRefinedConfession] = useState("");
   const [isInCooldown, setIsInCooldown] = useState(false);
@@ -51,12 +57,13 @@ const NewConfession = () => {
   });
 
   // Form for posting confession
-  const postForm = useForm<CreateConfession>({
+  const postForm = useForm<NewConfession>({
     defaultValues: {
       user: session.nickname,
       userId: session.$id,
       text: "",
       campus: "",
+      inputTag: "",
     },
   });
 
@@ -131,7 +138,7 @@ const NewConfession = () => {
   };
 
   // Submit confession
-  const submitConfession = async (data: CreateConfession) => {
+  const submitConfession = async (data: NewConfession) => {
     // Check cooldown before submitting
     if (isInCooldown) {
       Alert.alert(
@@ -148,6 +155,8 @@ const NewConfession = () => {
       setApiError(null);
       startTransition(async () => {
         try {
+          // Make the tags into an array of strings
+          data["tags"] = data.inputTag.split(" ").map((tag) => tag.trim());
           await createConfession(data);
           queryClient.invalidateQueries({ queryKey: ["confessions"] });
 
@@ -225,6 +234,58 @@ const NewConfession = () => {
       setApiError("An unexpected error occurred during refinement.");
     }
   };
+
+  // Generate Tags for confession
+  const handleGenerateTags = async () => {
+    try {
+      setApiError(null);
+
+      if (!postForm.getValues("text")) {
+        setApiError("Please enter a confession before generating tags.");
+        return;
+      }
+
+      startTransition(async () => {
+        try {
+          const response = await generateTags({
+            input: postForm.getValues("text"),
+          });
+
+          if (response?.output) {
+            // The output is a array of strings, join them into a single string
+            const tags = response.output.join(" ");
+            postForm.setValue("tags", tags);
+            updateTags(tags);
+          } else {
+            throw new Error("No data received from AI tag generation");
+          }
+        } catch (error) {
+          console.error("Generate tags error:", error);
+          setApiError("Failed to generate tags with AI. Please try again.");
+
+          // Show user-friendly alert
+          Alert.alert(
+            "AI Tag Generation Failed",
+            "Unable to generate tags for your confession. You can still post it manually.",
+            [{ text: "OK" }]
+          );
+        }
+      });
+    } catch (error) {
+      console.error("Handle generate tags outer error:", error);
+      setApiError("An unexpected error occurred during tag generation.");
+    }
+  };
+
+  // Update tags
+  const updateTags = useCallback((tags: string) => {
+    const separatedTags = tags.split(" ");
+    const filteredTags = separatedTags.filter(
+      (tag) => tag.trim() !== "" || tag.length > 0
+    );
+
+    setTags(filteredTags);
+  }, []);
 
   // Navigate to another page
   const navigateTo = (path: string) => {
@@ -428,6 +489,58 @@ const NewConfession = () => {
               )}
             />
 
+            <Text className="font-bold text-md mb-2">Tags</Text>
+            <Controller
+              control={postForm.control}
+              name="inputTag"
+              rules={{ required: false }}
+              render={({ field: { onChange, onBlur, value } }) => (
+                <TextInput
+                  className="bg-white px-2 py-2 rounded-xl"
+                  multiline={true}
+                  numberOfLines={2}
+                  placeholder="Add space for separated tags..."
+                  onChangeText={onChange}
+                  onChange={(e) => updateTags(e.nativeEvent.text)}
+                  editable={!isPending}
+                  onBlur={onBlur}
+                  value={value}
+                />
+              )}
+            />
+
+            {/* Generate Tags */}
+            <Pressable
+              className="items-center justify-center p-2 rounded-xl mt-2"
+              style={[
+                styles.tagButton,
+                (isPending || isInCooldown) && styles.disabledButton,
+              ]}
+              onPress={handleGenerateTags}
+              disabled={isPending || isInCooldown}
+            >
+              <Text className="text-white">
+                {isPending || isInCooldown ? "Generating..." : "Generate Tags"}
+              </Text>
+            </Pressable>
+
+            {tags.length > 0 && (
+              <View
+                className="flex-row gap-2 mt-2"
+                style={{ flexWrap: "wrap" }}
+              >
+                {tags.map((tag) => (
+                  <View
+                    key={tag}
+                    className="items-center justify-center p-2 rounded-xl"
+                    style={styles.tags}
+                  >
+                    <Text className="text-black">#{tag}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
             {postForm.formState.errors.text && (
               <Text style={{ color: "red" }}>Confession text is required</Text>
             )}
@@ -509,5 +622,17 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.6,
+  },
+  tagButton: {
+    backgroundColor: "#1C1C3A",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  tags: {
+    backgroundColor: "skyblue",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
   },
 });

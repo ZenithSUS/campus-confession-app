@@ -107,6 +107,7 @@ const Confession = () => {
       confession: "",
       author: "",
       content: "",
+      userId: "",
     },
   });
 
@@ -175,6 +176,7 @@ const Confession = () => {
       confession: id as string,
       author: session?.nickname || "",
       content: "",
+      userId: "",
     });
   }, [dispatch, commentForm.reset, id, session?.nickname]);
 
@@ -184,29 +186,35 @@ const Confession = () => {
 
     try {
       startTransition(async () => {
-        if (isLiked) {
-          const likeId = processedPost.likesData?.find(
-            (like) => like.userId === session.$id
-          )?.$id;
+        try {
+          if (isLiked) {
+            const likeId = processedPost.likesData?.find(
+              (like) => like.userId === session.$id
+            )?.$id;
 
-          if (likeId) {
-            await deleteLike(likeId);
+            if (likeId) {
+              await deleteLike(likeId);
+            } else {
+              throw new Error("Like not found");
+            }
           } else {
-            throw new Error("Like not found");
+            const data = {
+              confessionId: processedPost.$id,
+              userId: session.$id,
+            };
+            await createLike(data);
           }
-        } else {
-          const data = {
-            confessionId: processedPost.$id,
-            userId: session.$id,
-          };
-          await createLike(data);
-        }
 
-        // Refetch likes after mutation
-        await refetchLikes();
+          // Refetch likes after mutation
+          await refetchLikes();
+        } catch (error) {
+          console.error("Error Processing like:", error);
+          setApiError("Failed to process like. Please try again.");
+        }
       });
     } catch (error) {
-      console.error("Error handling like:", error);
+      console.error("Error Processing like:", error);
+      setApiError("There was an error processing your like. Please try again.");
     }
   }, [confession, session, isLiked, deleteLike, createLike, refetchLikes]);
 
@@ -252,26 +260,33 @@ const Confession = () => {
 
       try {
         startTransition(async () => {
-          if (state.type === "comment") {
-            await createComment(data);
-            await refetchConfessionComments();
-          } else {
-            const replyData = {
-              content: data.content,
-              userId: session.$id,
-              comment: state.id,
-              author: session.nickname,
-            };
-            await createChildrenComment(replyData);
-            await refetchReplies();
+          try {
+            if (state.type === "comment") {
+              await createComment(data);
+              await refetchConfessionComments();
+            } else {
+              const replyData = {
+                content: data.content,
+                userId: session.$id,
+                comment: state.id,
+                author: session.nickname,
+              };
+              await createChildrenComment(replyData);
+              await refetchReplies();
+            }
+          } catch (error) {
+            console.error("Error submitting comment:", error);
+            setApiError("Failed to submit comment. Please try again.");
           }
 
           handleReset();
           await refetchComments();
         });
       } catch (error) {
-        console.error("Error submitting comment:", error);
-        setApiError("Failed to submit comment. Please try again.");
+        console.error("Error in submitting comment:", error);
+        setApiError(
+          "There was an error submitting your comment. Please try again."
+        );
       } finally {
         dispatch({ type: "RESET" });
         dispatch({ type: "SET_TYPE", payload: "comment" });
@@ -345,6 +360,7 @@ const Confession = () => {
         confession: id as string,
         author: session.nickname,
         content: "",
+        userId: session.$id,
       });
     }
   }, [id, session?.nickname, commentForm.reset]);
@@ -458,6 +474,7 @@ const Confession = () => {
           {processedPost && (
             <View className="flex col gap-2 shadow p-5 rounded-xl">
               <View className="flex-col gap-2 py-2">
+                {/* Post Header */}
                 <View className="flex-row justify-between">
                   <Text className="font-bold">
                     {processedPost.user} :{" "}
@@ -468,6 +485,23 @@ const Confession = () => {
                   </Text>
                   <Text>{processedPost.campus}</Text>
                 </View>
+
+                {/* Post Tags */}
+                {processedPost.tags.length > 0 && (
+                  <View
+                    className="flex-row gap-2 items-center"
+                    style={{ flexWrap: "wrap" }}
+                  >
+                    {processedPost.tags.map((tag, index) => (
+                      <Text
+                        key={index}
+                        className="px-2 py-1 rounded-full font-bold bg-gray-100 text-xs"
+                      >
+                        #{tag}
+                      </Text>
+                    ))}
+                  </View>
+                )}
                 <Text>{processedPost.text}</Text>
               </View>
 

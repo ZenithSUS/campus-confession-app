@@ -6,6 +6,7 @@ import { useGetComments } from "@/hooks/useComment";
 import { useGetConfession } from "@/hooks/useConfession";
 import { useGetLikes } from "@/hooks/useLike";
 import { posts } from "@/utils/posts";
+import { shuffleData } from "@/utils/shuffle";
 import { ShowConfessions } from "@/utils/types";
 import { useRouter } from "expo-router";
 import { Feather } from "lucide-react-native";
@@ -50,24 +51,32 @@ const Home = () => {
   const [randomNumber, setRandomNumber] = useState(0);
   const router = useRouter();
 
+  // Randomize data after first render
+  useEffect(() => {
+    setRandomNumber(Math.random() - 0.5);
+  }, []);
+
+  // Generate random data after first render
   useEffect(() => {
     if (fetchedconfessions && fetchedLikes && fetchedComments) {
       const data = posts(fetchedconfessions, fetchedLikes, fetchedComments);
-      setRandomNumber(Math.random() - 0.5);
-      setFilteredConfessions(data);
+      setFilteredConfessions(shuffleData(data, randomNumber));
     }
   }, [fetchedconfessions, fetchedLikes, fetchedComments]);
 
+  // If there is an error, return true
   const hasError = useMemo(() => {
     return confessionError || likesError || commentsError;
   }, [confessionError, likesError, commentsError]);
 
+  // If the data is loaded, return true
   const isDataLoaded = useMemo(() => {
     if (hasError) return true;
 
     return !!fetchedconfessions && !!fetchedLikes && !!fetchedComments;
   }, [fetchedconfessions, fetchedLikes, fetchedComments, hasError]);
 
+  // If the data is loading, return true
   const AnyLoading = useMemo(() => {
     if (hasError) return false;
 
@@ -87,6 +96,7 @@ const Home = () => {
     hasError,
   ]);
 
+  // Structure data to be displayed
   const displayedConfessions = useMemo(() => {
     let result = filteredConfessions;
 

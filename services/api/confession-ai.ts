@@ -32,3 +32,19 @@ export const generateComment = async (
     throw error;
   }
 };
+
+export const generateTags = async (
+  data: { input: string },
+  signal?: AbortSignal
+) => {
+  try {
+    const response = await axiosClient.post("/mistral/generateTags", data, {
+      signal,
+      timeout: 10000,
+    });
+    return response;
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
+};

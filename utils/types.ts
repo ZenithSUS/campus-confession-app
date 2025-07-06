@@ -19,6 +19,7 @@ export type Confessions = {
   text: string;
   $createdAt: string;
   user: string;
+  tags: string[];
 };
 
 export type ShowConfessions = Confessions & {
@@ -33,6 +34,7 @@ export type CreateConfession = {
   text: string;
   user: string;
   userId: string;
+  tags: string[];
 };
 
 export type Likes = {
@@ -70,6 +72,7 @@ export type CreateComment = {
   content: string;
   confession: string;
   author: string;
+  userId: string;
 };
 
 export type ChildrenComment = {

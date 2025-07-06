@@ -52,6 +52,23 @@ const ConfessionCard = ({ confession }: { confession: ShowConfessions }) => {
           <Text>{confession.campus}</Text>
         </View>
 
+        {/* Tags */}
+        {confession.tags.length > 0 && (
+          <View
+            className="flex-row items-center gap-2"
+            style={{ flexWrap: "wrap" }}
+          >
+            {confession.tags.map((tag, index) => (
+              <Text
+                key={index}
+                className="px-2 py-1 rounded-full font-bold bg-gray-100 text-xs"
+              >
+                #{tag}
+              </Text>
+            ))}
+          </View>
+        )}
+
         <Link href={`/confession/${confession.$id}`} className="py-2">
           <Text numberOfLines={3}>{confession.text}</Text>
         </Link>
