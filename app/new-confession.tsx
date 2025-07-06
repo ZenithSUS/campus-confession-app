@@ -514,15 +514,12 @@ const NewConfession = () => {
             {/* Generate Tags */}
             <Pressable
               className="items-center justify-center p-2 rounded-xl mt-2"
-              style={[
-                styles.tagButton,
-                (isPending || isInCooldown) && styles.disabledButton,
-              ]}
+              style={[styles.tagButton, isPending && styles.disabledButton]}
               onPress={handleGenerateTags}
-              disabled={isPending || isInCooldown}
+              disabled={isPending}
             >
               <Text className="text-white">
-                {isPending || isInCooldown ? "Generating..." : "Generate Tags"}
+                {isPending ? "Generating..." : "Generate Tags"}
               </Text>
             </Pressable>
 
