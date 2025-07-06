@@ -27,7 +27,7 @@ import {
 import Picker from "react-native-picker-select";
 
 type NewConfession = CreateConfession & {
-  inputTag: string;
+  inputTag?: string;
 };
 
 const NewConfession = () => {
@@ -156,9 +156,10 @@ const NewConfession = () => {
       startTransition(async () => {
         try {
           // Make the tags into an array of strings
-          data["tags"] = data.inputTag.split(" ").map((tag) => tag.trim());
-          // Remove input tag on the form
-          postForm.setValue("inputTag", "");
+          data["tags"] =
+            data.inputTag?.split(" ").map((tag) => tag.trim()) || [];
+          // Remove input tag on in the final object
+          delete data["inputTag"];
           await createConfession(data);
           queryClient.invalidateQueries({ queryKey: ["confessions"] });
 
