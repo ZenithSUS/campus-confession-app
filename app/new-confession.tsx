@@ -64,6 +64,7 @@ const NewConfession = () => {
       text: "",
       campus: "",
       tags: [],
+      inputTag: "",
     },
   });
 
@@ -257,7 +258,7 @@ const NewConfession = () => {
           if (response?.output) {
             // The output is a array of strings, join them into a single string
             const tags = response.output.join(" ");
-            postForm.setValue("tags", tags);
+            postForm.setValue("inputTag", tags);
             updateTags(tags);
           } else {
             throw new Error("No data received from AI tag generation");
