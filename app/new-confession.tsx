@@ -27,7 +27,7 @@ import {
 import Picker from "react-native-picker-select";
 
 type NewConfession = CreateConfession & {
-  inputTag?: string;
+  inputTag: string;
 };
 
 const NewConfession = () => {
@@ -156,11 +156,11 @@ const NewConfession = () => {
       startTransition(async () => {
         try {
           // Make the tags into an array of strings
-          data["tags"] =
-            data.inputTag?.split(" ").map((tag) => tag.trim()) || [];
-          // Remove input tag on in the final object
-          delete data["inputTag"];
-          await createConfession(data);
+          data["tags"] = data.inputTag.split(" ").map((tag) => tag.trim());
+
+          // Dont include the inputTag field in the final data
+          const { inputTag, ...finalData } = data;
+          await createConfession(finalData);
           queryClient.invalidateQueries({ queryKey: ["confessions"] });
 
           // Store last post time and activate cooldown
