@@ -157,7 +157,9 @@ const NewConfession = () => {
       startTransition(async () => {
         try {
           // Make the tags into an array of strings
-          data["tags"] = data.inputTag.split(" ").map((tag) => tag.trim());
+          if (data.inputTag && data.inputTag.length > 0) {
+            data["tags"] = data.inputTag.split(" ").map((tag) => tag.trim());
+          }
 
           // Dont include the inputTag field in the final data
           const { inputTag, ...finalData } = data;
