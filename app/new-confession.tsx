@@ -157,6 +157,8 @@ const NewConfession = () => {
         try {
           // Make the tags into an array of strings
           data["tags"] = data.inputTag.split(" ").map((tag) => tag.trim());
+          // Remove input tag on the form
+          postForm.setValue("inputTag", "");
           await createConfession(data);
           queryClient.invalidateQueries({ queryKey: ["confessions"] });
 
