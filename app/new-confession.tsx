@@ -63,7 +63,7 @@ const NewConfession = () => {
       userId: session.$id,
       text: "",
       campus: "",
-      inputTag: "",
+      tags: [],
     },
   });
 
