@@ -105,4 +105,4 @@ const ConfessionCard = ({ confession }: { confession: ShowConfessions }) => {
   );
 };
 
-export default ConfessionCard;
+export default React.memo(ConfessionCard);

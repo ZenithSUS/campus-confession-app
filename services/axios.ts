@@ -5,6 +5,8 @@ const baseUrl =
     ? process.env.EXPO_PUBLIC_DEV_API_BASE_URL
     : process.env.EXPO_PUBLIC_API_BASE_URL;
 
+const API_SERVER_KEY = process.env.EXPO_PUBLIC_API_KEY;
+
 if (!baseUrl) {
   throw new Error("PUBLIC_EXPO_API_BASE_URL is not defined");
 }
@@ -14,7 +16,10 @@ const axiosClient = axios.create({
   timeout: 10000,
 });
 
-axiosClient.interceptors.request.use((config) => config);
+axiosClient.interceptors.request.use((config) => {
+  config.headers["x-api-key"] = API_SERVER_KEY;
+  return config;
+});
 
 axiosClient.interceptors.response.use(
   (response) => response,

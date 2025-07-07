@@ -136,4 +136,4 @@ const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
   );
 };
 
-export default ChildrenCommentCard;
+export default React.memo(ChildrenCommentCard);

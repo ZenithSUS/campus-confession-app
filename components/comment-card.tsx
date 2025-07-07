@@ -140,4 +140,4 @@ const CommentCard = ({
   );
 };
 
-export default CommentCard;
+export default React.memo(CommentCard);

@@ -246,7 +246,7 @@ const Home = () => {
         removeClippedSubviews={true}
         maxToRenderPerBatch={10}
         windowSize={21}
-        initialNumToRender={10}
+        initialNumToRender={5}
       />
 
       <View className="p-3 mt-4">
