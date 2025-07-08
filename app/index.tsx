@@ -6,7 +6,6 @@ import { useGetComments } from "@/hooks/useComment";
 import { useGetConfession } from "@/hooks/useConfession";
 import { useGetLikes } from "@/hooks/useLike";
 import { posts } from "@/utils/posts";
-import { shuffleData } from "@/utils/shuffle";
 import { ShowConfessions } from "@/utils/types";
 import { useRouter } from "expo-router";
 import { Feather } from "lucide-react-native";
@@ -46,21 +45,17 @@ const Home = () => {
   const [filteredConfessions, setFilteredConfessions] = useState<
     ShowConfessions[]
   >([]);
+  const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
-  const [randomNumber, setRandomNumber] = useState(0);
   const router = useRouter();
-
-  // Randomize data after first render
-  useEffect(() => {
-    setRandomNumber(Math.random() - 0.5);
-  }, []);
+  const itemsPerPage = 5;
 
   // Generate random data after first render
   useEffect(() => {
     if (fetchedconfessions && fetchedLikes && fetchedComments) {
       const data = posts(fetchedconfessions, fetchedLikes, fetchedComments);
-      setFilteredConfessions(shuffleData(data, randomNumber));
+      setFilteredConfessions(data);
     }
   }, [fetchedconfessions, fetchedLikes, fetchedComments]);
 
@@ -123,6 +118,18 @@ const Home = () => {
 
     return result;
   }, [filteredConfessions, searchQuery, filterCategory]);
+
+  // Make pagination
+  const paginatedConfessions = useMemo(() => {
+    return displayedConfessions.slice(0, page * itemsPerPage);
+  }, [displayedConfessions, page]);
+
+  // Load More Pages
+  const handleLoadMore = useCallback(() => {
+    if (paginatedConfessions.length < displayedConfessions.length) {
+      setPage((prevPage) => prevPage + 1);
+    }
+  }, [paginatedConfessions, displayedConfessions]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -221,7 +228,7 @@ const Home = () => {
       </View>
 
       <FlatList
-        data={displayedConfessions}
+        data={paginatedConfessions}
         keyExtractor={keyExtractor}
         renderItem={renderConfessionItem}
         refreshControl={
@@ -238,15 +245,24 @@ const Home = () => {
             </View>
           ) : null
         }
+        ListFooterComponent={
+          paginatedConfessions.length < displayedConfessions.length ? (
+            <View className="items-center py-2">
+              <ActivityIndicator size="small" color={"#1C1C3A"} />
+            </View>
+          ) : null
+        }
         contentContainerStyle={{
           flexGrow: 1,
           paddingBottom: 20,
         }}
         showsVerticalScrollIndicator={false}
         removeClippedSubviews={true}
-        maxToRenderPerBatch={10}
-        windowSize={21}
+        maxToRenderPerBatch={5}
+        windowSize={5}
         initialNumToRender={5}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
       />
 
       <View className="p-3 mt-4">

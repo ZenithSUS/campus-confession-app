@@ -53,6 +53,7 @@ const Confession = () => {
   const { id } = useLocalSearchParams();
   const { session } = useSession();
   const { state, dispatch } = useComment();
+  const itemsPerPage = 5;
 
   // Data fetching hooks
   const {
@@ -87,6 +88,7 @@ const Confession = () => {
   } = useGetChildrenComments();
 
   // Local state
+  const [commentPage, setCommentPage] = useState(1);
   const [apiError, setApiError] = useState<string | null>(null);
   const [openReplyId, setOpenReplyId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -162,11 +164,23 @@ const Confession = () => {
     return commentData(confessionComments!, likes!, replies!).reverse();
   }, [confessionComments, likes, replies, isDataLoaded]);
 
+  // Paginate Comments
+  const paginateComments = useMemo(() => {
+    return processedComments.slice(0, commentPage * itemsPerPage);
+  }, [processedComments, commentPage, setCommentPage]);
+
   // Check if user liked the post
   const isLiked = useMemo(() => {
     if (!processedPost?.likesData || !session?.$id) return false;
     return processedPost.likesData.some((like) => like.userId === session.$id);
   }, [processedPost?.likesData, session?.$id]);
+
+  // Load More Pages in comments
+  const handleLoadMoreComments = useCallback(() => {
+    if (paginateComments.length < processedComments.length) {
+      setCommentPage((prev) => prev + 1);
+    }
+  }, [paginateComments, setCommentPage, commentPage]);
 
   // Reset form handler
   const handleReset = useCallback(() => {
@@ -216,7 +230,15 @@ const Confession = () => {
       console.error("Error Processing like:", error);
       setApiError("There was an error processing your like. Please try again.");
     }
-  }, [confession, session, isLiked, deleteLike, createLike, refetchLikes]);
+  }, [
+    confession,
+    session,
+    isLiked,
+    deleteLike,
+    createLike,
+    refetchLikes,
+    processedPost,
+  ]);
 
   // GenerateComment handler
   const handleGenerateComment = useCallback(async () => {
@@ -250,6 +272,7 @@ const Confession = () => {
     state.type,
     generateCommentForm,
     commentForm,
+    setApiError,
   ]);
 
   // Comment submission handler
@@ -530,7 +553,7 @@ const Confession = () => {
           )}
 
           {/* Comments Section */}
-          {confessionComments.length > 0 ? (
+          {paginateComments.length > 0 ? (
             <View className="flex-row gap-2 items-center">
               <Notebook size={18} color="#6B7280" />
               <Text className="font-bold text-lg">Comments</Text>
@@ -540,17 +563,25 @@ const Confession = () => {
           )}
 
           {/* Comments List */}
-          {processedComments.length > 0 && (
+          {paginateComments.length > 0 && (
             <FlatList
-              data={processedComments}
+              data={paginateComments}
               keyExtractor={(item) => item.$id.toString()}
               renderItem={renderCommentItem}
-              nestedScrollEnabled={true}
+              scrollEnabled={true}
               removeClippedSubviews={true}
-              maxToRenderPerBatch={10}
-              windowSize={10}
+              maxToRenderPerBatch={5}
+              windowSize={5}
               initialNumToRender={5}
-              getItemLayout={undefined} // Let FlatList calculate
+              onEndReached={handleLoadMoreComments}
+              onEndReachedThreshold={0.5}
+              ListFooterComponent={
+                paginateComments.length > processedComments.length ? (
+                  <View className="flex-row justify-center items-center py-2">
+                    <ActivityIndicator size="large" />
+                  </View>
+                ) : null
+              }
             />
           )}
         </View>

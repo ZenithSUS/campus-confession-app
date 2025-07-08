@@ -5,7 +5,7 @@ import { timeDifference } from "@/utils/calculate-time";
 import { replies } from "@/utils/replies";
 import { ShowChildrenComment } from "@/utils/types";
 import { Heart } from "lucide-react-native";
-import React, { useCallback, useMemo, useTransition } from "react";
+import React, { useCallback, useMemo, useState, useTransition } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -14,15 +14,22 @@ import {
   View,
 } from "react-native";
 
+// Component to render a single comment
 const ChildrenCommentItems = ({ item }: { item: ShowChildrenComment }) => {
+  // Context and hooks
   const { session } = useSession();
-  const [isPending, startTransition] = useTransition();
   const { mutateAsync: CreateLike } = useCreateLike();
   const { mutateAsync: DeleteLike } = useDeleteLike();
+
+  // Local state
+  const [isPending, startTransition] = useTransition();
+
+  // Check if the user has liked the comment
   const isLiked = useMemo(() => {
     return item.likesData.some((like) => like.userId === session.$id);
   }, [item.likesData]);
 
+  // Handle like
   const handleLike = () => {
     try {
       startTransition(async () => {
@@ -74,10 +81,17 @@ const ChildrenCommentItems = ({ item }: { item: ShowChildrenComment }) => {
 };
 
 const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
+  const itemsPerPage = 5;
+
+  // Hooks
   const { data: childrenComments, isLoading: isChildrenCommentsLoading } =
     useGetChildrenCommentsById(commentId);
   const { data: childrenLikes, isLoading: isLikesLoading } = useGetLikes();
 
+  // Local state
+  const [page, setPage] = useState(1);
+
+  // Memoized values
   const isDataLoaded = useMemo(() => {
     return childrenComments && childrenLikes;
   }, [childrenComments, childrenLikes]);
@@ -91,6 +105,11 @@ const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
     return replies(childrenComments!, childrenLikes!);
   }, [childrenComments, childrenLikes]);
 
+  const paginateReplies = useMemo(() => {
+    return processedReplies.slice(0, page * itemsPerPage);
+  }, [processedReplies, page]);
+
+  // Callbacks and functions
   const keyExtractor = useCallback(
     (items: ShowChildrenComment) => items.$id.toString(),
     []
@@ -102,6 +121,12 @@ const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
     ),
     []
   );
+
+  const handleLoadMore = useCallback(() => {
+    if (paginateReplies.length < processedReplies.length) {
+      setPage((prevPage) => prevPage + 1);
+    }
+  }, [paginateReplies, processedReplies]);
 
   if (isAnyLoading) {
     return (
@@ -115,7 +140,7 @@ const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
   return (
     <View className="flex-1">
       <FlatList
-        data={processedReplies}
+        data={paginateReplies}
         keyExtractor={keyExtractor}
         renderItem={renderChildrenComment}
         ListHeaderComponent={
@@ -131,6 +156,15 @@ const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
             <Text className="font-bold text-lg p-4">No Replies Yet.</Text>
           </View>
         }
+        ListFooterComponent={
+          <View className="flex-1 justify-center items-center mt-2">
+            {paginateReplies.length < processedReplies.length && (
+              <ActivityIndicator size="large" color={"#1C1C3A"} />
+            )}
+          </View>
+        }
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.2}
       />
     </View>
   );
