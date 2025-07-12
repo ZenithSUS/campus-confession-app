@@ -1,21 +1,15 @@
 import CommentCard from "@/components/comment-card";
 import { useComment } from "@/context/comment";
 import { useSession } from "@/context/session";
-import {
-  useCreateChildenComment,
-  useGetChildrenComments,
-} from "@/hooks/useChildrenComment";
+import { useCreateChildenComment } from "@/hooks/useChildrenComment";
 import {
   useCreateComment,
-  useGetComments,
-  useGetCommentsByConfession,
+  useGetCommentsPaginatedByConfession,
 } from "@/hooks/useComment";
 import { useGetConfessionById } from "@/hooks/useConfession";
 import { useGenerateComment } from "@/hooks/useConfessionAI";
-import { useCreateLike, useDeleteLike, useGetLikes } from "@/hooks/useLike";
+import { useCreateLike, useDeleteLike } from "@/hooks/useLike";
 import { timeDifference } from "@/utils/calculate-time";
-import { commentData } from "@/utils/comments";
-import { singlePost } from "@/utils/posts";
 import { Comments, CreateComment } from "@/utils/types";
 import { router, useLocalSearchParams } from "expo-router";
 import {
@@ -51,44 +45,28 @@ import {
 
 const Confession = () => {
   const { id } = useLocalSearchParams();
-  const { session } = useSession();
+  const { session, isLoading: sessionLoading, refreshSession } = useSession();
   const { state, dispatch } = useComment();
-  const itemsPerPage = 5;
 
   // Data fetching hooks
   const {
     data: confession,
     isLoading: confessionLoading,
     refetch: refetchConfession,
-    error,
+    error: confessionError,
   } = useGetConfessionById(id as string);
-  const {
-    data: likes,
-    isLoading: likeLoading,
-    refetch: refetchLikes,
-    error: likeError,
-  } = useGetLikes();
-  const {
-    data: comments,
-    isLoading: commentsLoading,
-    refetch: refetchComments,
-    error: commentError,
-  } = useGetComments();
   const {
     data: confessionComments,
     isLoading: confessionCommentsLoading,
     refetch: refetchConfessionComments,
     error: confessionCommentsError,
-  } = useGetCommentsByConfession(id as string);
-  const {
-    data: replies,
-    isLoading: replyLoading,
-    refetch: refetchReplies,
-    error: replyError,
-  } = useGetChildrenComments();
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useGetCommentsPaginatedByConfession(id as string);
 
   // Local state
-  const [commentPage, setCommentPage] = useState(1);
+  const [fetchedComments, setFetchedComments] = useState<Comments[]>([]);
   const [apiError, setApiError] = useState<string | null>(null);
   const [openReplyId, setOpenReplyId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -119,55 +97,50 @@ const Confession = () => {
     },
   });
 
+  // Renders when data is fetched also if changes are detected
+  useEffect(() => {
+    if (confessionComments) {
+      const comments = confessionComments?.pages.flat() as Comments[];
+      setFetchedComments(comments);
+    }
+
+    return () => {
+      setFetchedComments([]); // Clear the comments when the component unmounts
+    };
+  }, [confessionComments]);
+
   // Check if all required data is loaded
   const isDataLoaded = useMemo(() => {
-    return !!(confession && likes && comments && confessionComments && replies);
-  }, [confession, likes, comments, confessionComments, replies]);
+    return !!(confession && confessionComments);
+  }, [confession, confessionComments]);
+
+  // Check if there is an error
+  const isAnyError = useMemo(() => {
+    return !!confessionError || !!confessionCommentsError;
+  }, [confessionError, confessionCommentsError]);
 
   // Check if any data is loading
   const isAnyLoading = useMemo(() => {
+    if (isAnyError && !refreshing) return false;
+
     return (
       confessionLoading ||
-      likeLoading ||
-      commentsLoading ||
       confessionCommentsLoading ||
-      replyLoading ||
+      sessionLoading ||
       refreshing
     );
   }, [
     confessionLoading,
-    likeLoading,
-    commentsLoading,
     confessionCommentsLoading,
-    replyLoading,
+    sessionLoading,
     refreshing,
   ]);
-
-  const isAnyError = useMemo(() => {
-    return (
-      !!error ||
-      !!likeError ||
-      !!commentError ||
-      !!confessionCommentsError ||
-      !!replyError
-    );
-  }, [error, likeError, commentError, confessionCommentsError, replyError]);
 
   // Memoized processed data
   const processedPost = useMemo(() => {
     if (!isDataLoaded) return null;
-    return singlePost(confession!, likes!, comments!);
-  }, [confession, likes, comments, isDataLoaded]);
-
-  const processedComments = useMemo(() => {
-    if (!isDataLoaded) return [];
-    return commentData(confessionComments!, likes!, replies!).reverse();
-  }, [confessionComments, likes, replies, isDataLoaded]);
-
-  // Paginate Comments
-  const paginateComments = useMemo(() => {
-    return processedComments.slice(0, commentPage * itemsPerPage);
-  }, [processedComments, commentPage, setCommentPage]);
+    return confession;
+  }, [confession, isDataLoaded]);
 
   // Check if user liked the post
   const isLiked = useMemo(() => {
@@ -177,10 +150,10 @@ const Confession = () => {
 
   // Load More Pages in comments
   const handleLoadMoreComments = useCallback(() => {
-    if (paginateComments.length < processedComments.length) {
-      setCommentPage((prev) => prev + 1);
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
     }
-  }, [paginateComments, setCommentPage, commentPage]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Reset form handler
   const handleReset = useCallback(() => {
@@ -188,17 +161,18 @@ const Confession = () => {
     dispatch({ type: "SET_TYPE", payload: "comment" });
     commentForm.reset({
       confession: id as string,
-      author: session?.nickname || "",
+      author: session?.nickname,
       content: "",
-      userId: "",
+      userId: session?.$id,
     });
-  }, [dispatch, commentForm.reset, id, session?.nickname]);
+  }, [dispatch, commentForm.reset, id, session?.nickname, session?.$id]);
 
   // Like handler
   const handleLike = useCallback(async () => {
     if (!processedPost || !session) return;
 
     try {
+      setApiError(null);
       startTransition(async () => {
         try {
           if (isLiked) {
@@ -207,7 +181,10 @@ const Confession = () => {
             )?.$id;
 
             if (likeId) {
-              await deleteLike(likeId);
+              await deleteLike({
+                likeId: likeId,
+                confessionId: processedPost.$id,
+              });
             } else {
               throw new Error("Like not found");
             }
@@ -218,9 +195,6 @@ const Confession = () => {
             };
             await createLike(data);
           }
-
-          // Refetch likes after mutation
-          await refetchLikes();
         } catch (error) {
           console.error("Error Processing like:", error);
           setApiError("Failed to process like. Please try again.");
@@ -230,15 +204,7 @@ const Confession = () => {
       console.error("Error Processing like:", error);
       setApiError("There was an error processing your like. Please try again.");
     }
-  }, [
-    confession,
-    session,
-    isLiked,
-    deleteLike,
-    createLike,
-    refetchLikes,
-    processedPost,
-  ]);
+  }, [confession, session, isLiked, deleteLike, createLike, processedPost]);
 
   // GenerateComment handler
   const handleGenerateComment = useCallback(async () => {
@@ -286,16 +252,15 @@ const Confession = () => {
           try {
             if (state.type === "comment") {
               await createComment(data);
-              await refetchConfessionComments();
             } else {
               const replyData = {
                 content: data.content,
                 userId: session.$id,
                 comment: state.id,
                 author: session.nickname,
+                confessionId: data.confession,
               };
               await createChildrenComment(replyData);
-              await refetchReplies();
             }
           } catch (error) {
             console.error("Error submitting comment:", error);
@@ -303,7 +268,6 @@ const Confession = () => {
           }
 
           handleReset();
-          await refetchComments();
         });
       } catch (error) {
         console.error("Error in submitting comment:", error);
@@ -316,16 +280,7 @@ const Confession = () => {
       }
       Keyboard.dismiss();
     },
-    [
-      state,
-      session,
-      createComment,
-      createChildrenComment,
-      handleReset,
-      refetchConfessionComments,
-      refetchReplies,
-      refetchComments,
-    ]
+    [state, session, createComment, createChildrenComment, handleReset]
   );
 
   // Refresh handler
@@ -334,23 +289,15 @@ const Confession = () => {
     try {
       await Promise.all([
         refetchConfession(),
-        refetchLikes(),
-        refetchComments(),
         refetchConfessionComments(),
-        refetchReplies(),
+        refreshSession(),
       ]);
     } catch (error) {
       console.error("Error refreshing data:", error);
     } finally {
       setRefreshing(false);
     }
-  }, [
-    refetchConfession,
-    refetchLikes,
-    refetchComments,
-    refetchConfessionComments,
-    refetchReplies,
-  ]);
+  }, [refetchConfession, refetchConfessionComments, refreshSession]);
 
   // Keyboard listeners
   useEffect(() => {
@@ -374,6 +321,10 @@ const Confession = () => {
       dispatch({ type: "SET_ID", payload: id.toString() });
       dispatch({ type: "SET_TYPE", payload: "comment" });
     }
+
+    return () => {
+      dispatch({ type: "RESET" }); // Reset the form on unmount
+    };
   }, [id, dispatch]);
 
   // Initialize form
@@ -386,6 +337,10 @@ const Confession = () => {
         userId: session.$id,
       });
     }
+
+    return () => {
+      commentForm.reset(); // Reset the form
+    };
   }, [id, session?.nickname, commentForm.reset]);
 
   useEffect(() => {
@@ -411,13 +366,15 @@ const Confession = () => {
     return (
       <View className="flex-1 items-center justify-center min-h-screen">
         <ActivityIndicator size="large" color="#1C1C3A" />
-        <Text className="mt-2 text-gray-600">Loading confession...</Text>
+        <Text className="mt-2 text-gray-600">
+          Loading confession details...
+        </Text>
       </View>
     );
   }
 
   if (isAnyError) {
-    const currentError = error || likeError || commentError;
+    const currentError = confessionError || confessionCommentsError;
 
     const isTimeoutError =
       currentError?.message?.includes("not responding") ||
@@ -553,7 +510,7 @@ const Confession = () => {
           )}
 
           {/* Comments Section */}
-          {paginateComments.length > 0 ? (
+          {fetchedComments.length > 0 ? (
             <View className="flex-row gap-2 items-center">
               <Notebook size={18} color="#6B7280" />
               <Text className="font-bold text-lg">Comments</Text>
@@ -563,9 +520,9 @@ const Confession = () => {
           )}
 
           {/* Comments List */}
-          {paginateComments.length > 0 && (
+          {fetchedComments.length > 0 && (
             <FlatList
-              data={paginateComments}
+              data={fetchedComments}
               keyExtractor={(item) => item.$id.toString()}
               renderItem={renderCommentItem}
               scrollEnabled={true}
@@ -576,7 +533,7 @@ const Confession = () => {
               onEndReached={handleLoadMoreComments}
               onEndReachedThreshold={0.5}
               ListFooterComponent={
-                paginateComments.length > processedComments.length ? (
+                isFetchingNextPage ? (
                   <View className="flex-row justify-center items-center py-2">
                     <ActivityIndicator size="large" />
                   </View>

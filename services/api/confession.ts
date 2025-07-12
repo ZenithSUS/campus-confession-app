@@ -34,6 +34,27 @@ export const getConfession = (id: string, signal?: AbortSignal) => {
   }
 };
 
+export const getConfessionPagination = (page: number, signal?: AbortSignal) => {
+  try {
+    return axiosClient.get(`/confessions/pagination/${page}`, {
+      signal,
+      timeout: 30000,
+    });
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
+};
+
+export const getTopConfessions = (signal?: AbortSignal) => {
+  try {
+    return axiosClient.get("/confessions/top", { signal, timeout: 10000 });
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
+};
+
 export const createConfession = (
   data: CreateConfession,
   signal?: AbortSignal

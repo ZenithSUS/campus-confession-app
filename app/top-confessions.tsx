@@ -1,14 +1,12 @@
 import ConfessionCard from "@/components/confession-card";
-import { useGetComments } from "@/hooks/useComment";
-import { useGetConfession } from "@/hooks/useConfession";
-import { useGetLikes } from "@/hooks/useLike";
-import { posts } from "@/utils/posts";
+import { useGetTopConfessions } from "@/hooks/useConfession";
 import { ShowConfessions } from "@/utils/types";
 import { router } from "expo-router";
 import { EyeIcon } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Button,
   FlatList,
   Pressable,
   RefreshControl,
@@ -23,34 +21,23 @@ const TopConfessions = () => {
   // Fetch data in API
   const {
     data: confessions,
-    isLoading: confessionsLoading,
+    isLoading: topConfessionsLoading,
     refetch: refetchConfessions,
-  } = useGetConfession();
-  const {
-    data: likes,
-    isLoading: likesLoading,
-    refetch: refetchLikes,
-  } = useGetLikes();
-  const {
-    data: comments,
-    isLoading: commentsLoading,
-    refetch: refetchComments,
-  } = useGetComments();
+    error,
+  } = useGetTopConfessions();
 
   const isAnyLoading = useMemo(() => {
-    return likesLoading || commentsLoading || confessionsLoading;
-  }, [likesLoading, commentsLoading, confessionsLoading]);
+    return topConfessionsLoading;
+  }, [topConfessionsLoading]);
 
   const isDataLoaded = useMemo(() => {
-    return !!likes && !!comments && !!confessions;
-  }, [likes, comments, confessions]);
+    return !!confessions;
+  }, [confessions]);
 
   const topConfessions = useMemo(() => {
     if (!isDataLoaded) return [];
-    return posts(confessions!, likes!, comments!)
-      .sort((a, b) => b.likesLength - a.likesLength)
-      .slice(0, 10);
-  }, [isDataLoaded, confessions, likes, comments]);
+    return confessions;
+  }, [isDataLoaded, confessions]);
 
   const renderItem = useCallback(
     ({ item }: { item: ShowConfessions }) => (
@@ -67,11 +54,7 @@ const TopConfessions = () => {
   const onRefresh = useCallback(async () => {
     try {
       setRefresh(true);
-      await Promise.all([
-        refetchConfessions(),
-        refetchLikes(),
-        refetchComments(),
-      ]);
+      await refetchConfessions();
     } catch (error) {
       console.log("Error refreshing data:", error);
     } finally {
@@ -79,10 +62,49 @@ const TopConfessions = () => {
     }
   }, []);
 
-  if (isAnyLoading) {
+  if (isAnyLoading || !isDataLoaded) {
     return (
-      <View className="flex-1 items-center justify-center">
-        <ActivityIndicator size="large" />
+      <View className="flex-1 items-center justify-center min-h-screen">
+        <ActivityIndicator size="large" color={"#1C1C3A"} />
+        <Text className="mt-2 text-gray-600">Loading top confessions...</Text>
+      </View>
+    );
+  }
+
+  if (!!error) {
+    const confessionError = error as Error;
+    // Get the first available error
+    const currentError = confessionError;
+
+    // Check if it's a timeout or network error
+    const isTimeoutError =
+      currentError?.message?.includes("not responding") ||
+      currentError?.message?.includes("timeout");
+    const isNetworkError =
+      currentError?.message?.includes("connect to server") ||
+      currentError?.message?.includes("Network Error");
+
+    return (
+      <View className="flex-1 items-center justify-center min-h-screen px-4">
+        <View className="flex-col items-center gap-4">
+          <Text className="text-error text-center text-lg font-semibold">
+            {isTimeoutError
+              ? "Server is not responding"
+              : isNetworkError
+              ? "Connection failed"
+              : "Something went wrong"}
+          </Text>
+
+          <Text className="text-gray-600 text-center">
+            {isTimeoutError
+              ? "The server is taking too long to respond. Please try again."
+              : isNetworkError
+              ? "Please check your internet connection and try again."
+              : currentError?.message || "An unexpected error occurred"}
+          </Text>
+
+          <Button onPress={onRefresh} title="Try Again" />
+        </View>
       </View>
     );
   }

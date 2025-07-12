@@ -2,17 +2,13 @@ import ConfessionCard from "@/components/confession-card";
 import Filter from "@/components/filter";
 import Searchbar from "@/components/searchbar";
 import { useSession } from "@/context/session";
-import { useGetComments } from "@/hooks/useComment";
-import { useGetConfession } from "@/hooks/useConfession";
-import { useGetLikes } from "@/hooks/useLike";
-import { posts } from "@/utils/posts";
+import { useGetConfessionPagination } from "@/hooks/useConfession";
 import { ShowConfessions } from "@/utils/types";
 import { useRouter } from "expo-router";
 import { Feather } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Button,
   FlatList,
   Pressable,
   RefreshControl,
@@ -24,72 +20,52 @@ const Home = () => {
   const { isLoading: isLoadingSession, refreshSession } = useSession();
   const {
     data: fetchedconfessions,
+    fetchNextPage,
+    isFetchingNextPage,
+    hasNextPage,
     isLoading,
     refetch: refetchConfession,
     error: confessionError,
-  } = useGetConfession();
-  const {
-    data: fetchedLikes,
-    isLoading: likesLoading,
-    refetch: refetchLikes,
-    error: likesError,
-  } = useGetLikes();
-  const {
-    data: fetchedComments,
-    isLoading: commentsLoading,
-    refetch: refetchComments,
-    error: commentsError,
-  } = useGetComments();
+  } = useGetConfessionPagination();
 
   const [refreshing, setRefreshing] = useState(false);
   const [filteredConfessions, setFilteredConfessions] = useState<
     ShowConfessions[]
   >([]);
-  const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const router = useRouter();
-  const itemsPerPage = 5;
 
-  // Generate random data after first render
+  // Filter confessions
   useEffect(() => {
-    if (fetchedconfessions && fetchedLikes && fetchedComments) {
-      const data = posts(fetchedconfessions, fetchedLikes, fetchedComments);
+    if (fetchedconfessions) {
+      const data = fetchedconfessions.pages.flat() as ShowConfessions[];
       setFilteredConfessions(data);
     }
-  }, [fetchedconfessions, fetchedLikes, fetchedComments]);
+
+    return () => {
+      setFilteredConfessions([]); // clean up when component unmounts
+    };
+  }, [fetchedconfessions]);
 
   // If there is an error, return true
   const hasError = useMemo(() => {
-    return confessionError || likesError || commentsError;
-  }, [confessionError, likesError, commentsError]);
+    return confessionError;
+  }, [confessionError]);
 
   // If the data is loaded, return true
   const isDataLoaded = useMemo(() => {
     if (hasError) return true;
 
-    return !!fetchedconfessions && !!fetchedLikes && !!fetchedComments;
-  }, [fetchedconfessions, fetchedLikes, fetchedComments, hasError]);
+    return !!fetchedconfessions;
+  }, [fetchedconfessions, hasError]);
 
   // If the data is loading, return true
   const AnyLoading = useMemo(() => {
-    if (hasError) return false;
+    if (hasError && !refreshing) return false;
 
-    return (
-      isLoading ||
-      isLoadingSession ||
-      likesLoading ||
-      commentsLoading ||
-      refreshing
-    );
-  }, [
-    isLoading,
-    isLoadingSession,
-    likesLoading,
-    commentsLoading,
-    refreshing,
-    hasError,
-  ]);
+    return isLoading || isLoadingSession || refreshing;
+  }, [isLoading, isLoadingSession, refreshing, hasError]);
 
   // Structure data to be displayed
   const displayedConfessions = useMemo(() => {
@@ -119,27 +95,17 @@ const Home = () => {
     return result;
   }, [filteredConfessions, searchQuery, filterCategory]);
 
-  // Make pagination
-  const paginatedConfessions = useMemo(() => {
-    return displayedConfessions.slice(0, page * itemsPerPage);
-  }, [displayedConfessions, page]);
-
   // Load More Pages
   const handleLoadMore = useCallback(() => {
-    if (paginatedConfessions.length < displayedConfessions.length) {
-      setPage((prevPage) => prevPage + 1);
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
     }
-  }, [paginatedConfessions, displayedConfessions]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await Promise.all([
-        refetchConfession(),
-        refetchLikes(),
-        refetchComments(),
-        refreshSession(),
-      ]);
+      await Promise.all([refetchConfession(), refreshSession()]);
     } catch (error: any) {
       console.log("Error refreshing data:", error);
     } finally {
@@ -180,7 +146,7 @@ const Home = () => {
   // Show error state (includes timeout and network errors)
   if (hasError) {
     // Get the first available error
-    const currentError = confessionError || likesError || commentsError;
+    const currentError = confessionError;
 
     // Check if it's a timeout or network error
     const isTimeoutError =
@@ -193,7 +159,10 @@ const Home = () => {
     return (
       <View className="flex-1 items-center justify-center min-h-screen px-4">
         <View className="flex-col items-center gap-4">
-          <Text className="text-error text-center text-lg font-semibold">
+          <Text
+            className="text-center text-lg font-semibold"
+            style={{ color: "red" }}
+          >
             {isTimeoutError
               ? "Server is not responding"
               : isNetworkError
@@ -208,8 +177,13 @@ const Home = () => {
               ? "Please check your internet connection and try again."
               : currentError?.message || "An unexpected error occurred"}
           </Text>
-
-          <Button onPress={onRefresh} title="Try Again" />
+          <Pressable
+            onPress={onRefresh}
+            className="mt-4 px-2 py-2 rounded-full"
+            style={{ backgroundColor: "#1C1C3A" }}
+          >
+            <Text className="text-white font-semibold">Retry</Text>
+          </Pressable>
         </View>
       </View>
     );
@@ -228,7 +202,7 @@ const Home = () => {
       </View>
 
       <FlatList
-        data={paginatedConfessions}
+        data={displayedConfessions}
         keyExtractor={keyExtractor}
         renderItem={renderConfessionItem}
         refreshControl={
@@ -246,9 +220,10 @@ const Home = () => {
           ) : null
         }
         ListFooterComponent={
-          paginatedConfessions.length < displayedConfessions.length ? (
+          isFetchingNextPage ? (
             <View className="items-center py-2">
               <ActivityIndicator size="small" color={"#1C1C3A"} />
+              <Text className="text-gray-600">Loading more confessions...</Text>
             </View>
           ) : null
         }
@@ -262,7 +237,7 @@ const Home = () => {
         windowSize={5}
         initialNumToRender={5}
         onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.5}
+        onEndReachedThreshold={0.3}
       />
 
       <View className="p-3 mt-4">

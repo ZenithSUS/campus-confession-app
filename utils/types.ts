@@ -43,11 +43,14 @@ export type Likes = {
   childrenCommentId: ChildrenComment;
   commentId: Comments;
   userId: string;
+  isLiked: boolean;
+  likesLength: number;
 };
 
 export type CreateLike = {
   confessionId?: string;
   childrenCommentId?: string;
+  commentId?: string;
   userId: string;
 };
 
@@ -82,6 +85,8 @@ export type ChildrenComment = {
   author: string;
   comment: Comments;
   content: string;
+  likesLength: number;
+  likesData: Likes[];
 };
 
 export type CreateChildrenComment = {
@@ -94,4 +99,13 @@ export type ShowChildrenComment = ChildrenComment & {
   author: string;
   likesLength: number;
   likesData: Likes[];
+};
+
+export type CreateLikeParams = Omit<CreateLike, "userId"> & { userId: string };
+
+export type DeleteLikeParams = {
+  likeId: string;
+  confessionId?: string;
+  childrenCommentId?: string;
+  commentId?: string;
 };

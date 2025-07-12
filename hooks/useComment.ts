@@ -2,12 +2,16 @@ import {
   createComment,
   getComments,
   getCommentsByConfession,
+  getCommentsPaginationByConfession,
 } from "@/services/api/comment";
 import { networkAxiosError, retryAxiosError } from "@/utils/axios-error";
 import { Comments, CreateComment } from "@/utils/types";
 import {
+  InfiniteData,
   QueryObserverResult,
   UseBaseMutationResult,
+  useInfiniteQuery,
+  UseInfiniteQueryResult,
   useMutation,
   useQuery,
   useQueryClient,
@@ -77,6 +81,45 @@ export const useGetCommentsByConfession = (
   });
 };
 
+export const useGetCommentsPaginatedByConfession = (
+  id: string
+): UseInfiniteQueryResult<InfiniteData<Comments[], unknown>, Error> => {
+  return useInfiniteQuery<Comments[]>({
+    queryKey: ["comments", id],
+    queryFn: async ({ pageParam = 1, signal }) => {
+      try {
+        const response = await getCommentsPaginationByConfession(
+          id,
+          pageParam as number,
+          signal
+        );
+        return response.data;
+      } catch (error) {
+        const err = error as AxiosError;
+        return networkAxiosError(err);
+      }
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      return lastPage.length < 5 ? undefined : allPages.length + 1;
+    },
+    retry: (failureCount, error) => {
+      if (error instanceof Error) {
+        retryAxiosError(failureCount, error as AxiosError);
+        if (error.message.includes("Network Error")) {
+          return false;
+        }
+      }
+
+      return failureCount < 2;
+    },
+    refetchOnWindowFocus: false,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 5 * 60 * 1000,
+    networkMode: "offlineFirst",
+  });
+};
+
 export const useCreateComment = (): UseBaseMutationResult<
   AxiosResponse<CreateComment>,
   unknown,
@@ -94,10 +137,29 @@ export const useCreateComment = (): UseBaseMutationResult<
         throw err;
       }
     },
-    mutationKey: ["comments"],
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["comments"] }),
-        queryClient.invalidateQueries({ queryKey: ["confessions"] });
+    mutationKey: ["comments", "confession"],
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["comments", variables.confession],
+        refetchType: "all",
+      });
+    },
+    onError: () => {
+      console.error("Failed to create comment");
+      queryClient.invalidateQueries({
+        queryKey: ["confessions", "topConfessions", "confession"],
+        refetchType: "all",
+      });
+    },
+    retry: (failureCount, error) => {
+      if (error instanceof Error) {
+        retryAxiosError(failureCount, error as AxiosError);
+        if (error.message.includes("Network Error")) {
+          return false;
+        }
+      }
+
+      return failureCount < 1;
     },
   });
 };

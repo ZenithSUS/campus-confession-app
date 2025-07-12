@@ -13,24 +13,33 @@ const ConfessionCard = ({ confession }: { confession: ShowConfessions }) => {
   const { mutateAsync: CreateLike } = useCreateLike();
   const { mutateAsync: DeleteLike } = useDeleteLike();
   const isAuthor = confession.user === session.nickname;
+
   const isLiked = useMemo(() => {
     return confession.likesData.some((like) => like.userId === session.$id);
-  }, [confession.likesData, session.$id]);
+  }, [confession.likesData, session.$id, useCreateLike, useDeleteLike]);
 
+  // Handle like
   const handleLike = () => {
     try {
       startTransition(async () => {
-        if (isLiked) {
-          const likeId = confession.likesData.find(
-            (like) => like.userId === session.$id
-          )?.$id;
-          await DeleteLike(likeId!);
-        } else {
-          const data = {
-            confessionId: confession.$id,
-            userId: session.$id,
-          };
-          await CreateLike(data);
+        try {
+          if (isLiked) {
+            const likeId = confession.likesData.find(
+              (like) => like.userId === session.$id
+            )?.$id;
+            await DeleteLike({
+              likeId: likeId!,
+              confessionId: confession.$id,
+            });
+          } else {
+            const data = {
+              confessionId: confession.$id,
+              userId: session.$id,
+            };
+            await CreateLike(data);
+          }
+        } catch (error) {
+          console.log(error);
         }
       });
     } catch (error) {

@@ -1,10 +1,45 @@
 import axiosClient from "@/services/axios";
 import { CreateChildrenComment } from "@/utils/types";
 
-export const getChildrenComments = () => axiosClient.get("/child-comments");
+export const getChildrenComments = (signal?: AbortSignal) => {
+  try {
+    return axiosClient.get("/child-comments", { signal, timeout: 10000 });
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
+};
 
-export const getChildrenCommentById = (id: string) =>
-  axiosClient.get(`/child-comments/${id}`);
+export const getChildrenCommentById = (id: string, signal?: AbortSignal) => {
+  try {
+    return axiosClient.get(`/child-comments/${id}`, { signal, timeout: 10000 });
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
+};
 
-export const createChildrenComment = (data: CreateChildrenComment) =>
-  axiosClient.post(`/child-comments`, data);
+export const getChildrenCommentPaginatedByParent = (
+  id: string,
+  page: number,
+  signal?: AbortSignal
+) => {
+  try {
+    return axiosClient.get(`/child-comments/comment/${id}/pagination/${page}`, {
+      signal,
+      timeout: 10000,
+    });
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
+};
+
+export const createChildrenComment = (data: CreateChildrenComment) => {
+  try {
+    return axiosClient.post("/child-comments", data);
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
+};

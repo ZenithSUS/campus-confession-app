@@ -1,10 +1,10 @@
 import { useComment } from "@/context/comment";
 import { useSession } from "@/context/session";
-import { useCreateLike, useDeleteLike } from "@/hooks/useLike";
+import { useCreateLikeComment, useDeleteLike } from "@/hooks/useLike";
 import { timeDifference } from "@/utils/calculate-time";
 import { Comments } from "@/utils/types";
 import { Heart, TextIcon } from "lucide-react-native";
-import React, { useMemo, useTransition } from "react";
+import React, { useCallback, useMemo, useTransition } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import ChildrenCommentCard from "./children-comment-card";
 
@@ -21,13 +21,14 @@ const CommentCard = ({
 }: CommentCardProps) => {
   const { state, dispatch } = useComment();
   const { session } = useSession();
-  const { mutateAsync: CreateLike } = useCreateLike();
+  const { mutateAsync: CreateLike } = useCreateLikeComment();
   const { mutateAsync: DeleteLike } = useDeleteLike();
   const [isPending, startTransition] = useTransition();
   const isShowReply = openReplyId === comment.$id;
+
   const isLiked = useMemo(() => {
     return comment.likesData.some((like) => like.userId === session.$id);
-  }, [comment.likesData]);
+  }, [comment.likesData, session.$id, CreateLike, DeleteLike]);
 
   const handleReply = () => {
     dispatch({ type: "SET_ID", payload: comment.$id });
@@ -59,26 +60,43 @@ const CommentCard = ({
     }
   };
 
-  const handleLike = () => {
+  const handleLike = useCallback(() => {
     try {
       startTransition(async () => {
-        if (isLiked) {
-          const likeId = comment.likesData.find(
-            (like) => like.userId === session.$id
-          )?.$id;
-          await DeleteLike(likeId!);
-        } else {
-          const data = {
-            commentId: comment.$id,
-            userId: session.$id,
-          };
-          await CreateLike(data);
+        try {
+          if (isLiked) {
+            const likeId = comment.likesData.find(
+              (like) => like.userId === session.$id
+            )?.$id;
+            await DeleteLike({
+              likeId: likeId!,
+              commentId: comment.$id,
+              confessionId: comment.confession.$id,
+            });
+          } else {
+            const data = {
+              commentId: comment.$id,
+              userId: session.$id,
+              confessionId: comment.confession.$id,
+            };
+            await CreateLike(data);
+          }
+        } catch (error) {
+          console.log(error);
         }
       });
     } catch (error) {
       console.log(error);
     }
-  };
+  }, [
+    isLiked,
+    comment.likesData,
+    session.$id,
+    comment.$id,
+    comment.confession.$id,
+    CreateLike,
+    DeleteLike,
+  ]);
 
   return (
     <View className="flex-1 p-2 flex-col gap-2">

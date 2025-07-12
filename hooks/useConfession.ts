@@ -2,13 +2,18 @@ import {
   createConfession,
   deleteConfession,
   getConfession,
+  getConfessionPagination,
   getConfessions,
+  getTopConfessions,
 } from "@/services/api/confession";
 import { networkAxiosError, retryAxiosError } from "@/utils/axios-error";
 import { Confessions, CreateConfession, ShowConfessions } from "@/utils/types";
 import {
+  InfiniteData,
   QueryObserverResult,
   UseBaseMutationResult,
+  useInfiniteQuery,
+  UseInfiniteQueryResult,
   useMutation,
   useQuery,
   useQueryClient,
@@ -17,7 +22,7 @@ import { AxiosError, AxiosResponse } from "axios";
 
 export const useGetConfession = (): QueryObserverResult<ShowConfessions[]> => {
   return useQuery<ShowConfessions[]>({
-    queryKey: ["confessions"],
+    queryKey: ["allConfessions"],
     queryFn: async ({ signal }) => {
       try {
         // React Query automatically provides signal for timeout/cancellation
@@ -83,6 +88,74 @@ export const useGetConfessionById = (
   });
 };
 
+export const useGetConfessionPagination = (): UseInfiniteQueryResult<
+  InfiniteData<Confessions[], unknown>,
+  Error
+> => {
+  return useInfiniteQuery<Confessions[]>({
+    queryKey: ["confessions"],
+    queryFn: async ({ pageParam = 1, signal }) => {
+      try {
+        const response = await getConfessionPagination(
+          pageParam as number,
+          signal
+        );
+        return response.data;
+      } catch (error) {
+        const err = error as AxiosError;
+        throw networkAxiosError(err);
+      }
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      return lastPage.length < 5 ? undefined : allPages.length + 1;
+    },
+    refetchOnWindowFocus: false,
+    retry: (failureCount, error) => {
+      if (error instanceof Error) {
+        retryAxiosError(failureCount, error as AxiosError);
+        if (error.message.includes("Network Error")) {
+          return false;
+        }
+      }
+      return failureCount < 2; // Normal retry logic for other errors
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+    staleTime: 5 * 60 * 1000,
+    networkMode: "offlineFirst",
+  });
+};
+
+export const useGetTopConfessions = (): QueryObserverResult<
+  ShowConfessions[]
+> => {
+  return useQuery<ShowConfessions[]>({
+    queryKey: ["topConfessions"],
+    queryFn: async ({ signal }) => {
+      try {
+        const response = await getTopConfessions(signal);
+        return response.data;
+      } catch (error) {
+        const err = error as AxiosError;
+        throw networkAxiosError(err);
+      }
+    },
+    refetchOnWindowFocus: false,
+    retry: (failureCount, error) => {
+      if (error instanceof Error) {
+        retryAxiosError(failureCount, error as AxiosError);
+        if (error.message.includes("Network Error")) {
+          return false;
+        }
+      }
+      return failureCount < 2;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 5 * 60 * 1000,
+    networkMode: "offlineFirst",
+  });
+};
+
 export const useCreateConfession = (): UseBaseMutationResult<
   AxiosResponse<CreateConfession>,
   unknown,
@@ -92,12 +165,10 @@ export const useCreateConfession = (): UseBaseMutationResult<
   return useMutation({
     mutationFn: async (data: CreateConfession) => {
       try {
-        // React Query automatically provides signal for timeout/cancellation
         return await createConfession(data);
       } catch (error) {
         const err = error as AxiosError;
 
-        // Handle timeout and network errors
         if (err.code === "ECONNABORTED" || err.message.includes("timeout")) {
           throw new Error("Server is not responding. Please try again.");
         }
@@ -117,7 +188,7 @@ export const useCreateConfession = (): UseBaseMutationResult<
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["confessions"] });
     },
-    retry: 1, // Retry once on failure
+    retry: 1,
   });
 };
 
@@ -154,7 +225,7 @@ export const useDeleteConfession = (): UseBaseMutationResult<
     },
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["confessions"] }),
-    retry: 1, // Retry once on failure
+    retry: 1,
     onError: (error) => {
       if (
         !(
