@@ -2,7 +2,10 @@ import ConfessionCard from "@/components/confession-card";
 import Filter from "@/components/filter";
 import Searchbar from "@/components/searchbar";
 import { useSession } from "@/context/session";
-import { useGetConfessionPagination } from "@/hooks/useConfession";
+import {
+  useGetConfessionByQuery,
+  useGetConfessionPagination,
+} from "@/hooks/useConfession";
 import { ShowConfessions } from "@/utils/types";
 import { useRouter } from "expo-router";
 import { Feather } from "lucide-react-native";
@@ -18,6 +21,27 @@ import {
 
 const Home = () => {
   const { isLoading: isLoadingSession, refreshSession } = useSession();
+  const router = useRouter();
+
+  // State
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [filteredConfessions, setFilteredConfessions] = useState<
+    ShowConfessions[]
+  >([]);
+  const [filterCategory, setFilterCategory] = useState("");
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Hooks
   const {
     data: fetchedconfessions,
     fetchNextPage,
@@ -28,90 +52,108 @@ const Home = () => {
     error: confessionError,
   } = useGetConfessionPagination();
 
-  const [refreshing, setRefreshing] = useState(false);
-  const [filteredConfessions, setFilteredConfessions] = useState<
-    ShowConfessions[]
-  >([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterCategory, setFilterCategory] = useState("");
-  const router = useRouter();
+  const {
+    data: fetchedconfessionsByQuery,
+    isLoading: isLoadingByQuery,
+    error: confessionErrorByQuery,
+    refetch: refetchByQuery,
+    isFetching: isFetchingByQuery,
+    isFetchingNextPage: isFetchingNextPageByQuery,
+    fetchNextPage: fetchNextPageByQuery,
+    hasNextPage: hasNextPageByQuery,
+  } = useGetConfessionByQuery(debouncedSearchQuery);
 
-  // Filter confessions
+  // Trigger the query again if the search query changes
   useEffect(() => {
-    if (fetchedconfessions) {
+    // Only refetch if there's actually a search query
+    if (debouncedSearchQuery.trim().length > 0) {
+      refetchByQuery();
+    }
+  }, [debouncedSearchQuery, refetchByQuery]);
+
+  // Determine if we're in search mode
+  const isSearchMode = debouncedSearchQuery.trim().length > 0;
+
+  // Filter confessions based on current mode
+  useEffect(() => {
+    if (isSearchMode && fetchedconfessionsByQuery) {
+      const data = fetchedconfessionsByQuery.pages.flat() as ShowConfessions[];
+      setFilteredConfessions(data);
+    } else if (!isSearchMode && fetchedconfessions) {
       const data = fetchedconfessions.pages.flat() as ShowConfessions[];
       setFilteredConfessions(data);
+    } else if (isSearchMode && !fetchedconfessionsByQuery) {
+      setFilteredConfessions([]);
     }
+  }, [fetchedconfessions, fetchedconfessionsByQuery, isSearchMode]);
 
-    return () => {
-      setFilteredConfessions([]); // clean up when component unmounts
-    };
-  }, [fetchedconfessions]);
+  // If search is loading
+  const isFetchingAny = useMemo(() => {
+    return isFetchingNextPage || isFetchingByQuery || isFetchingNextPageByQuery;
+  }, [isFetchingNextPage, isFetchingByQuery, isFetchingNextPageByQuery]);
 
-  // If there is an error, return true
+  // Determine current error state
   const hasError = useMemo(() => {
-    return confessionError;
-  }, [confessionError]);
+    return isSearchMode ? confessionErrorByQuery : confessionError;
+  }, [confessionError, confessionErrorByQuery, isSearchMode]);
 
-  // If the data is loaded, return true
+  // Determine if data is loaded
   const isDataLoaded = useMemo(() => {
     if (hasError) return true;
+    return isSearchMode ? !!fetchedconfessionsByQuery : !!fetchedconfessions;
+  }, [fetchedconfessions, fetchedconfessionsByQuery, hasError, isSearchMode]);
 
-    return !!fetchedconfessions;
-  }, [fetchedconfessions, hasError]);
-
-  // If the data is loading, return true
+  // Determine loading state
   const AnyLoading = useMemo(() => {
     if (hasError && !refreshing) return false;
-
-    return isLoading || isLoadingSession || refreshing;
+    const currentlyLoading = !!isSearchMode ? !!isLoadingByQuery : isLoading;
+    return currentlyLoading || isLoadingSession || refreshing;
   }, [isLoading, isLoadingSession, refreshing, hasError]);
 
   // Structure data to be displayed
   const displayedConfessions = useMemo(() => {
     let result = filteredConfessions;
 
-    if (searchQuery) {
-      return (result = result.filter(
-        (confession) =>
-          confession.text?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          confession.campus
-            ?.toLowerCase()
-            .includes(searchQuery.toLowerCase()) ||
-          confession.user?.toLowerCase().includes(searchQuery.toLowerCase())
-      ));
-    }
-
-    if (filterCategory) {
-      if (filterCategory === "All") {
-        return filteredConfessions;
-      }
-
-      return (result = result.filter(
+    if (filterCategory && filterCategory !== "All") {
+      result = result.filter(
         (confession) => confession.campus === filterCategory
-      ));
+      );
     }
 
     return result;
-  }, [filteredConfessions, searchQuery, filterCategory]);
+  }, [filteredConfessions, filterCategory]);
 
-  // Load More Pages
+  // Load More Pages (only for pagination mode)
   const handleLoadMore = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage) {
+    if (!isSearchMode && hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
+    } else if (isSearchMode && hasNextPageByQuery && !isFetchingByQuery) {
+      fetchNextPageByQuery();
     }
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  }, [
+    isSearchMode,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPageByQuery,
+    isFetchingByQuery,
+    fetchNextPageByQuery,
+  ]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await Promise.all([refetchConfession(), refreshSession()]);
+      if (isSearchMode) {
+        await Promise.all([refetchByQuery(), refreshSession()]);
+      } else {
+        await Promise.all([refetchConfession(), refreshSession()]);
+      }
     } catch (error: any) {
       console.log("Error refreshing data:", error);
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [isSearchMode, refetchByQuery, refetchConfession, refreshSession]);
 
   const renderConfessionItem = useCallback(
     ({ item }: { item: ShowConfessions }) => (
@@ -127,6 +169,10 @@ const Home = () => {
 
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
+    // Clear previous results immediately when search changes
+    if (query.trim().length === 0) {
+      setFilteredConfessions([]);
+    }
   }, []);
 
   const handleFilter = useCallback((category: string) => {
@@ -138,15 +184,17 @@ const Home = () => {
     return (
       <View className="flex-1 items-center justify-center min-h-screen">
         <ActivityIndicator size="large" color={"#1C1C3A"} />
-        <Text className="mt-2 text-gray-600">Loading confessions...</Text>
+        <Text className="mt-2 text-gray-600">
+          {isSearchMode ? "Searching confessions..." : "Loading confessions..."}
+        </Text>
       </View>
     );
   }
 
   // Show error state (includes timeout and network errors)
   if (hasError) {
-    // Get the first available error
-    const currentError = confessionError;
+    // Get the current error
+    const currentError = hasError;
 
     // Check if it's a timeout or network error
     const isTimeoutError =
@@ -192,11 +240,11 @@ const Home = () => {
   return (
     <View className="flex-1 bg-white px-4 py-2">
       <View className="flex-row items-center mb-3 gap-2">
-        <View className="flex-1">
+        <View>
           <Searchbar onSearch={handleSearch} />
         </View>
 
-        <View>
+        <View className="flex-1">
           <Filter onFilter={handleFilter} />
         </View>
       </View>
@@ -208,11 +256,19 @@ const Home = () => {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
+        ListHeaderComponent={
+          isFetchingAny ? (
+            <View className="items-center py-4">
+              <ActivityIndicator size="small" color={"#1C1C3A"} />
+              <Text className="text-gray-600">Searching confessions...</Text>
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
-          !isLoading ? (
+          displayedConfessions.length === 0 && !isFetchingAny ? (
             <View className="flex-1 items-center justify-center min-h-[400px]">
               <Text className="font-bold text-lg text-center">
-                {searchQuery || filterCategory
+                {isSearchMode || debouncedSearchQuery
                   ? "No confessions match your search"
                   : "No confessions found yet"}
               </Text>
@@ -220,7 +276,7 @@ const Home = () => {
           ) : null
         }
         ListFooterComponent={
-          isFetchingNextPage ? (
+          isFetchingNextPage || isFetchingNextPageByQuery ? (
             <View className="items-center py-2">
               <ActivityIndicator size="small" color={"#1C1C3A"} />
               <Text className="text-gray-600">Loading more confessions...</Text>

@@ -124,6 +124,28 @@ export const useCreateLike = (): UseBaseMutationResult<
         };
       });
 
+      queryClient.setQueryData(["confessionByQuery"], (oldData: any) => {
+        if (!oldData) return oldData;
+
+        return {
+          ...oldData,
+          pages: oldData.pages.map((page: ShowConfessions[]) => {
+            return page.map((confesion) => {
+              if (confesion.$id !== variables.confessionId) return confesion;
+
+              return {
+                ...confesion,
+                likesLength:
+                  confesion.likesData.filter((like) => {
+                    return like.$id !== newLike.data.$id;
+                  }).length + 1,
+                likesData: [...confesion.likesData, newLike.data.likesData],
+              };
+            });
+          }),
+        };
+      });
+
       queryClient.setQueryData(["topConfessions"], (oldData: any) => {
         if (!oldData) return oldData;
 
@@ -282,6 +304,32 @@ export const useDeleteLike = (): UseBaseMutationResult<
 
       if (!commentId && !childrenCommentId) {
         queryClient.setQueryData(["confessions"], (oldData: any) => {
+          if (!oldData) return oldData;
+
+          return {
+            ...oldData,
+            pages: oldData.pages.map((page: ShowConfessions[]) => {
+              return page.map((confession) => {
+                // Check if this confession contains the likeId in its likesData
+                const hasLike = confession.likesData.some(
+                  (like) => like.$id === likeId
+                );
+
+                if (!hasLike) return confession;
+
+                return {
+                  ...confession,
+                  likesLength: hasLike ? confession.likesLength - 1 : 0,
+                  likesData: confession.likesData.filter(
+                    (like) => like.$id !== likeId
+                  ),
+                };
+              });
+            }),
+          };
+        });
+
+        queryClient.setQueryData(["confessionByQuery"], (oldData: any) => {
           if (!oldData) return oldData;
 
           return {

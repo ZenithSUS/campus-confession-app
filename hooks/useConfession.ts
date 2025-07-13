@@ -2,6 +2,7 @@ import {
   createConfession,
   deleteConfession,
   getConfession,
+  getConfessionByQuery,
   getConfessionPagination,
   getConfessions,
   getTopConfessions,
@@ -121,6 +122,43 @@ export const useGetConfessionPagination = (): UseInfiniteQueryResult<
       return failureCount < 2; // Normal retry logic for other errors
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+    staleTime: 5 * 60 * 1000,
+    networkMode: "offlineFirst",
+  });
+};
+
+export const useGetConfessionByQuery = (query: string) => {
+  return useInfiniteQuery({
+    queryKey: ["confessionByQuery"],
+    queryFn: async ({ pageParam = 1, signal }) => {
+      try {
+        const response = await getConfessionByQuery(
+          query,
+          pageParam as number,
+          signal
+        );
+        return response.data;
+      } catch (error) {
+        const err = error as AxiosError;
+        throw networkAxiosError(err);
+      }
+    },
+    enabled: query.length > 0 || query !== "",
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      return lastPage.length < 5 ? undefined : allPages.length + 1;
+    },
+    refetchOnWindowFocus: false,
+    retry: (failureCount, error) => {
+      if (error instanceof Error) {
+        retryAxiosError(failureCount, error as AxiosError);
+        if (error.message.includes("Network Error")) {
+          return false;
+        }
+      }
+      return failureCount < 2;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     staleTime: 5 * 60 * 1000,
     networkMode: "offlineFirst",
   });

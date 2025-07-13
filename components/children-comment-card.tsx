@@ -115,7 +115,14 @@ const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
 
   useEffect(() => {
     if (childrenComments) {
-      const data = childrenComments.pages.flat() as ShowChildrenComment[];
+      const data = childrenComments.pages
+        .flat()
+        .sort(
+          (a, b) =>
+            b.likesLength - a.likesLength ||
+            new Date(b.$createdAt.split("T")[0]).getTime() -
+              new Date(a.$createdAt.split("T")[0]).getTime()
+        ) as ShowChildrenComment[];
       setFetchedReplies(data);
     }
 

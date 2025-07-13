@@ -44,6 +44,8 @@ const NewConfession = () => {
   const [isInCooldown, setIsInCooldown] = useState(false);
   const [cooldownTimeLeft, setCooldownTimeLeft] = useState(0);
   const [isPending, startTransition] = useTransition();
+  const [isGenerating, startGenerating] = useTransition();
+  const [isGeneratingTags, startGeneratingTags] = useTransition();
   const [isRefined, setRefined] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -208,7 +210,7 @@ const NewConfession = () => {
     try {
       setApiError(null);
 
-      startTransition(async () => {
+      startGenerating(async () => {
         try {
           const response = await refineConfession({
             confession: data.confession,
@@ -251,7 +253,7 @@ const NewConfession = () => {
         return;
       }
 
-      startTransition(async () => {
+      startGeneratingTags(async () => {
         try {
           const response = await generateTags({
             input: postForm.getValues("text"),
@@ -284,14 +286,17 @@ const NewConfession = () => {
   };
 
   // Update tags
-  const updateTags = useCallback((tags: string) => {
-    const separatedTags = tags.split(" ");
-    const filteredTags = separatedTags.filter(
-      (tag) => tag.trim() !== "" || tag.length > 0
-    );
+  const updateTags = useCallback(
+    (tags: string) => {
+      const separatedTags = tags.split(" ");
+      const filteredTags = separatedTags.filter(
+        (tag) => tag.trim() !== "" || tag.length > 0
+      );
 
-    setTags(filteredTags);
-  }, []);
+      setTags(filteredTags);
+    },
+    [setTags, setApiError, postForm]
+  );
 
   // Navigate to another page
   const navigateTo = (path: string) => {
@@ -387,6 +392,7 @@ const NewConfession = () => {
                   placeholder="Enter your confession to refine with AI..."
                   onBlur={onBlur}
                   value={value}
+                  editable={!isGenerating}
                   onChangeText={onChange}
                 />
               )}
@@ -409,6 +415,7 @@ const NewConfession = () => {
                   numberOfLines={3}
                   value={value}
                   onBlur={onBlur}
+                  editable={!isGenerating}
                   onChangeText={onChange}
                   placeholder="Enter context prompt..."
                 />
@@ -423,12 +430,12 @@ const NewConfession = () => {
 
             <Pressable
               className="items-center justify-center p-2 rounded-xl"
-              style={[styles.AIbutton, isPending && styles.disabledButton]}
+              style={[styles.AIbutton, isGenerating && styles.disabledButton]}
               onPress={refineForm.handleSubmit(handleRefine)}
-              disabled={isPending}
+              disabled={isGenerating}
             >
               <Text className="text-white">
-                {isPending ? "Refining..." : "Refine with AI"}
+                {isGenerating ? "Refining..." : "Refine with AI"}
               </Text>
             </Pressable>
 
@@ -450,9 +457,11 @@ const NewConfession = () => {
 
           {/* Post Confession Form */}
           <View className="bg-green-50 p-3 rounded-xl">
-            <Text className="font-bold text-md mb-3">📝 Post Confession</Text>
+            <Text className="font-bold mb-2" style={{ fontSize: 16 }}>
+              📝 Post Confession
+            </Text>
 
-            <Text className="font-bold text-md">Campus</Text>
+            <Text className="font-bold mb-2">Campus</Text>
             <Controller
               control={postForm.control}
               name="campus"
@@ -477,7 +486,7 @@ const NewConfession = () => {
               <Text style={{ color: "red" }}>Campus is required</Text>
             )}
 
-            <Text className="font-bold text-md mt-2">Final Confession</Text>
+            <Text className="font-bold mb-1 mt-2">Final Confession</Text>
             <Controller
               control={postForm.control}
               name="text"
@@ -490,12 +499,13 @@ const NewConfession = () => {
                   placeholder="Your final confession text..."
                   onBlur={onBlur}
                   value={value}
+                  editable={!isPending}
                   onChangeText={onChange}
                 />
               )}
             />
 
-            <Text className="font-bold text-md mb-2">Tags</Text>
+            <Text className="font-bold mt-2">Tags</Text>
             <Controller
               control={postForm.control}
               name="inputTag"
@@ -508,7 +518,7 @@ const NewConfession = () => {
                   placeholder="Add space for separated tags..."
                   onChangeText={onChange}
                   onChange={(e) => updateTags(e.nativeEvent.text)}
-                  editable={!isPending}
+                  editable={!isGeneratingTags}
                   onBlur={onBlur}
                   value={value}
                 />
@@ -520,10 +530,10 @@ const NewConfession = () => {
               className="items-center justify-center p-2 rounded-xl mt-2"
               style={[styles.tagButton, isPending && styles.disabledButton]}
               onPress={handleGenerateTags}
-              disabled={isPending}
+              disabled={isGeneratingTags}
             >
               <Text className="text-white">
-                {isPending ? "Generating..." : "Generate Tags"}
+                {isGeneratingTags ? "Generating..." : "Generate Tags"}
               </Text>
             </Pressable>
 

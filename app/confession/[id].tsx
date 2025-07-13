@@ -72,6 +72,7 @@ const Confession = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [keyboardOffSet, setKeyboardOffSet] = useState(0);
   const [isPending, startTransition] = useTransition();
+  const [isGenerating, startGenerating] = useTransition();
 
   // Mutation hooks
   const { mutateAsync: createComment } = useCreateComment();
@@ -209,7 +210,7 @@ const Confession = () => {
   // GenerateComment handler
   const handleGenerateComment = useCallback(async () => {
     setApiError(null);
-    startTransition(async () => {
+    startGenerating(async () => {
       try {
         let data = {
           input: generateCommentForm.getValues().input,
@@ -229,7 +230,11 @@ const Confession = () => {
         }
       } catch (error) {
         console.error("Error generating comment:", error);
-        setApiError("Failed to generate comment. Please try again.");
+        setApiError(
+          `Failed to generate ${
+            state.type === "comment" ? "comment" : "reply"
+          }. Please try again.`
+        );
       }
     });
   }, [
@@ -614,12 +619,16 @@ const Confession = () => {
         {/* Generate Reply Button */}
         <Pressable
           onPress={generateCommentForm.handleSubmit(handleGenerateComment)}
-          disabled={isPending}
+          disabled={isGenerating}
           className="flex-row justify-center items-center px-4 py-2 rounded-full gap-2"
-          style={{ backgroundColor: isPending ? "#6B7280" : "#1C1C3A" }}
+          style={{ backgroundColor: isGenerating ? "#6B7280" : "#1C1C3A" }}
         >
           <CogIcon size={18} color="white" />
-          <Text className="font-semibold text-white">Generate</Text>
+          <Text className="font-semibold text-white">
+            {isGenerating
+              ? "Generating..."
+              : `Generate ${state.type === "comment" ? "Comment" : "Reply"}`}
+          </Text>
         </Pressable>
       </View>
     </KeyboardAvoidingView>

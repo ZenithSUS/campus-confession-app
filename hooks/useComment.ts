@@ -143,6 +143,10 @@ export const useCreateComment = (): UseBaseMutationResult<
         queryKey: ["comments", variables.confession],
         refetchType: "all",
       });
+      queryClient.invalidateQueries({
+        queryKey: ["confession", variables.confession],
+        refetchType: "all",
+      });
     },
     onError: () => {
       console.error("Failed to create comment");

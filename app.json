@@ -21,7 +21,8 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/ZenithConfession.png"
+      "favicon": "./assets/images/ZenithConfession.png",
+      "name": "Zenith Confession App"
     },
     "plugins": [
       "expo-router",
