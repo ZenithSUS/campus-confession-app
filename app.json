@@ -20,9 +20,11 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/ZenithConfession.png",
-      "name": "Zenith Confession App"
+      "output": "export",
+      "favicon": "./assets/images/ZenithConfession.png"
+    },
+    "experimental": {
+      "router": true
     },
     "plugins": [
       "expo-router",

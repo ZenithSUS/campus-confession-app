@@ -88,9 +88,9 @@ const Home = () => {
   }, [fetchedconfessions, fetchedconfessionsByQuery, isSearchMode]);
 
   // If search is loading
-  const isFetchingAny = useMemo(() => {
-    return isFetchingNextPage || isFetchingByQuery || isFetchingNextPageByQuery;
-  }, [isFetchingNextPage, isFetchingByQuery, isFetchingNextPageByQuery]);
+  const isFetchingAnyQuery = useMemo(() => {
+    return isFetchingByQuery || isFetchingNextPageByQuery;
+  }, [isFetchingByQuery, isFetchingNextPageByQuery]);
 
   // Determine current error state
   const hasError = useMemo(() => {
@@ -100,14 +100,13 @@ const Home = () => {
   // Determine if data is loaded
   const isDataLoaded = useMemo(() => {
     if (hasError) return true;
-    return isSearchMode ? !!fetchedconfessionsByQuery : !!fetchedconfessions;
-  }, [fetchedconfessions, fetchedconfessionsByQuery, hasError, isSearchMode]);
+    return !!fetchedconfessions;
+  }, [fetchedconfessions, hasError]);
 
   // Determine loading state
   const AnyLoading = useMemo(() => {
     if (hasError && !refreshing) return false;
-    const currentlyLoading = !!isSearchMode ? !!isLoadingByQuery : isLoading;
-    return currentlyLoading || isLoadingSession || refreshing;
+    return isLoading || isLoadingSession || refreshing;
   }, [isLoading, isLoadingSession, refreshing, hasError]);
 
   // Structure data to be displayed
@@ -168,7 +167,12 @@ const Home = () => {
   );
 
   const handleSearch = useCallback((query: string) => {
-    setSearchQuery(query);
+    // Remove leading and trailing spaces also remove special characters
+    const santizeQuery = query
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-zA-Z0-9]/g, "");
+    setSearchQuery(santizeQuery);
     // Clear previous results immediately when search changes
     if (query.trim().length === 0) {
       setFilteredConfessions([]);
@@ -184,9 +188,7 @@ const Home = () => {
     return (
       <View className="flex-1 items-center justify-center min-h-screen">
         <ActivityIndicator size="large" color={"#1C1C3A"} />
-        <Text className="mt-2 text-gray-600">
-          {isSearchMode ? "Searching confessions..." : "Loading confessions..."}
-        </Text>
+        <Text className="mt-2 text-gray-600">Loading confessions...</Text>
       </View>
     );
   }
@@ -257,7 +259,7 @@ const Home = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         ListHeaderComponent={
-          isFetchingAny ? (
+          isFetchingAnyQuery || isLoadingByQuery ? (
             <View className="items-center py-4">
               <ActivityIndicator size="small" color={"#1C1C3A"} />
               <Text className="text-gray-600">Searching confessions...</Text>
@@ -265,7 +267,7 @@ const Home = () => {
           ) : null
         }
         ListEmptyComponent={
-          displayedConfessions.length === 0 && !isFetchingAny ? (
+          displayedConfessions.length === 0 && !isFetchingAnyQuery ? (
             <View className="flex-1 items-center justify-center min-h-[400px]">
               <Text className="font-bold text-lg text-center">
                 {isSearchMode || debouncedSearchQuery
@@ -276,7 +278,8 @@ const Home = () => {
           ) : null
         }
         ListFooterComponent={
-          isFetchingNextPage || isFetchingNextPageByQuery ? (
+          (isFetchingNextPage || isFetchingNextPageByQuery) &&
+          (!isLoading || !isLoadingByQuery) ? (
             <View className="items-center py-2">
               <ActivityIndicator size="small" color={"#1C1C3A"} />
               <Text className="text-gray-600">Loading more confessions...</Text>
