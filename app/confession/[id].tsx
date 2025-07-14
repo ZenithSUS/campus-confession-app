@@ -36,17 +36,18 @@ import {
   Platform,
   Pressable,
   RefreshControl,
-  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const Confession = () => {
   const { id } = useLocalSearchParams();
   const { session, isLoading: sessionLoading, refreshSession } = useSession();
   const { state, dispatch } = useComment();
+  const insets = useSafeAreaInsets();
 
   // Data fetching hooks
   const {
@@ -70,7 +71,6 @@ const Confession = () => {
   const [apiError, setApiError] = useState<string | null>(null);
   const [openReplyId, setOpenReplyId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [keyboardOffSet, setKeyboardOffSet] = useState(0);
   const [isPending, startTransition] = useTransition();
   const [isGenerating, startGenerating] = useTransition();
 
@@ -304,22 +304,6 @@ const Confession = () => {
     }
   }, [refetchConfession, refetchConfessionComments, refreshSession]);
 
-  // Keyboard listeners
-  useEffect(() => {
-    const showSubscription = Keyboard.addListener("keyboardDidShow", () => {
-      setKeyboardOffSet(Platform.OS === "ios" ? 80 : 100);
-    });
-
-    const hideSubscription = Keyboard.addListener("keyboardDidHide", () => {
-      setKeyboardOffSet(0);
-    });
-
-    return () => {
-      showSubscription.remove();
-      hideSubscription.remove();
-    };
-  }, []);
-
   // Initialize comment context
   useEffect(() => {
     if (id && typeof id === "string") {
@@ -354,16 +338,124 @@ const Confession = () => {
     }
   }, [processedPost?.text, dispatch]);
 
-  // Render comment item - moved before any conditional returns
-  const renderCommentItem = useCallback(
-    ({ item }: { item: Comments }) => (
-      <CommentCard
-        comment={item}
-        openReplyId={openReplyId}
-        setOpenReplyId={setOpenReplyId}
-      />
-    ),
-    [openReplyId]
+  const combinedData = useMemo(() => {
+    if (!processedPost) return [];
+
+    return [
+      { type: "post", data: processedPost },
+      ...(fetchedComments.length > 0 ? [{ type: "comment-header" }] : []),
+      ...fetchedComments.map((comment) => ({ type: "comment", data: comment })),
+    ];
+  }, [processedPost, fetchedComments]);
+
+  // Render Comments and Current Post
+  const renderItem = useCallback(
+    ({ item }: { item: any }) => {
+      if (item.type === "post") {
+        return (
+          <View className="flex col gap-2 shadow p-5 rounded-xl mb-4">
+            <View className="flex-col gap-2 py-2">
+              <View className="flex-row justify-between items-start">
+                <View className="flex-1 pr-2 min-w-0">
+                  <Text className="font-bold" numberOfLines={1}>
+                    {item.data.user}
+                  </Text>
+                  <Text className="text-sm text-gray-600">
+                    {timeDifference(item.data.$createdAt)} ago
+                  </Text>
+                </View>
+                <Text className="text-sm text-gray-600 ml-2">
+                  {item.data.campus}
+                </Text>
+              </View>
+
+              {/* Post Tags */}
+              {item.data.tags.length > 0 && (
+                <View
+                  className="flex-row items-center flex-wrap"
+                  style={{ gap: 6 }}
+                >
+                  {item.data.tags.map((tag: string, index: number) => (
+                    <Text
+                      key={index}
+                      className="px-2 py-1 rounded-full font-bold bg-gray-100 text-xs"
+                      style={{ marginBottom: 4 }}
+                    >
+                      #{tag}
+                    </Text>
+                  ))}
+                </View>
+              )}
+              <Text>{item.data.text}</Text>
+            </View>
+
+            <View className="flex-row justify-between items-center">
+              <View className="flex-row items-center" style={{ gap: 12 }}>
+                <TouchableOpacity
+                  className="flex-row items-center"
+                  onPress={handleLike}
+                  disabled={isPending}
+                  style={{
+                    opacity: isPending ? 0.5 : 1,
+
+                    minWidth: 44,
+                    minHeight: 44,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Heart
+                    size={20}
+                    color={isLiked ? "red" : "#6B7280"}
+                    fill={isLiked ? "red" : "none"}
+                  />
+                  <Text className="text-sm">{item.data.likesLength}</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  className="flex-row items-center"
+                  style={{
+                    minWidth: 44,
+                    minHeight: 44,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <TextIcon size={20} color="#6B7280" />
+                  <Text className="text-sm">{item.data.commentsLength}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        );
+      }
+
+      if (item.type === "comments-header") {
+        return (
+          <View className="flex-row gap-2 items-center mb-4">
+            <Notebook size={20} color="#6B7280" />
+            <Text className="font-bold text-lg">Comments</Text>
+          </View>
+        );
+      }
+
+      if (item.type === "comment") {
+        return (
+          <CommentCard
+            comment={item.data}
+            openReplyId={openReplyId}
+            setOpenReplyId={setOpenReplyId}
+          />
+        );
+      }
+
+      return null;
+    },
+    [handleLike, isPending, isLiked, openReplyId]
   );
 
   // Early returns after all hooks are defined
@@ -430,206 +522,170 @@ const Confession = () => {
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={keyboardOffSet}
     >
-      <ScrollView
-        className="flex-1"
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1 }}
-        keyboardShouldPersistTaps="handled"
-        nestedScrollEnabled={true}
-      >
-        <View className="flex-1 bg-white px-4 py-2 gap-2">
-          {/* Header Section */}
-          <View className="flex-row justify-between items-center">
-            <Text className="font-bold text-lg">Confession Details</Text>
-            <TouchableOpacity
-              className="flex-row items-center gap-2"
-              onPress={() => router.back()}
-            >
-              <ArrowBigLeftDash size={22} color="#1C1C3A" />
-              <Text>Back</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Post Content */}
-          {processedPost && (
-            <View className="flex col gap-2 shadow p-5 rounded-xl">
-              <View className="flex-col gap-2 py-2">
-                {/* Post Header */}
-                <View className="flex-row justify-between">
-                  <Text className="font-bold">
-                    {processedPost.user} :{" "}
-                    <Text className="font-normal">
-                      {timeDifference(processedPost.$createdAt)}
-                      {" ago"}
-                    </Text>
-                  </Text>
-                  <Text>{processedPost.campus}</Text>
-                </View>
-
-                {/* Post Tags */}
-                {processedPost.tags.length > 0 && (
-                  <View
-                    className="flex-row gap-2 items-center"
-                    style={{ flexWrap: "wrap" }}
-                  >
-                    {processedPost.tags.map((tag, index) => (
-                      <Text
-                        key={index}
-                        className="px-2 py-1 rounded-full font-bold bg-gray-100 text-xs"
-                      >
-                        #{tag}
-                      </Text>
-                    ))}
-                  </View>
-                )}
-                <Text>{processedPost.text}</Text>
-              </View>
-
-              <View className="flex-row justify-between">
-                <View className="flex-row gap-2 items-center">
-                  <TouchableOpacity
-                    className="flex-row items-center gap-2"
-                    onPress={handleLike}
-                    disabled={isPending}
-                  >
-                    <Heart size={18} color={isLiked ? "red" : "#6B7280"} />
-                    <Text>{processedPost.likesLength}</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity className="flex-row items-center gap-2">
-                    <TextIcon size={18} color="#6B7280" />
-                    <Text>{processedPost.commentsLength}</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <View className="flex-row gap-2 items-center">
-                  <Text>{timeDifference(processedPost.$createdAt)} ago</Text>
-                </View>
-              </View>
-            </View>
-          )}
-
-          {/* Comments Section */}
-          {fetchedComments.length > 0 ? (
-            <View className="flex-row gap-2 items-center">
-              <Notebook size={18} color="#6B7280" />
-              <Text className="font-bold text-lg">Comments</Text>
-            </View>
-          ) : (
-            <Text className="font-bold">No comments yet</Text>
-          )}
-
-          {/* Comments List */}
-          {fetchedComments.length > 0 && (
-            <FlatList
-              data={fetchedComments}
-              keyExtractor={(item) => item.$id.toString()}
-              renderItem={renderCommentItem}
-              scrollEnabled={true}
-              removeClippedSubviews={true}
-              maxToRenderPerBatch={5}
-              windowSize={5}
-              initialNumToRender={5}
-              onEndReached={handleLoadMoreComments}
-              onEndReachedThreshold={0.5}
-              ListFooterComponent={
-                isFetchingNextPage ? (
-                  <View className="flex-row justify-center items-center py-2">
-                    <ActivityIndicator size="large" />
-                  </View>
-                ) : null
-              }
-            />
-          )}
+      <View className="flex-1 bg-white">
+        <View
+          className="flex-row justify-between items-center px-4 py-2 bg-white border-b border-gray-200"
+          style={{ paddingTop: Math.max(insets.top, 12) }}
+        >
+          <Text className="font-bold text-lg">Confession Details</Text>
+          <TouchableOpacity
+            className="flex-row items-center"
+            onPress={() => router.back()}
+            style={{
+              padding: 8,
+              minWidth: 44,
+              minHeight: 44,
+              justifyContent: "center",
+              alignItems: "center",
+              gap: 4,
+            }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <ArrowBigLeftDash size={20} color="#1C1C3A" />
+            <Text className="text-sm">Back</Text>
+          </TouchableOpacity>
         </View>
-      </ScrollView>
 
-      {/* Comment Input */}
-      <View className="flex-col gap-2 bg-gray-100 px-4 py-2 rounded-xl">
-        <Text className="font-bold">Leave a comment</Text>
-        <Controller
-          control={commentForm.control}
-          name="content"
-          rules={{ required: true }}
-          render={({ field: { onChange, onBlur, value } }) => (
-            <TextInput
-              placeholder={
-                state.type === "comment"
-                  ? `What's on your mind, ${session?.nickname || "Anonymous"}?`
-                  : `Reply to, ${state.author}`
-              }
-              className="w-full px-4 py-2 rounded-xl bg-white"
-              numberOfLines={4}
-              multiline
-              value={value}
-              editable={!isPending}
-              onBlur={onBlur}
-              onChangeText={onChange}
-            />
-          )}
+        {/* FIXED: Single FlatList for better performance */}
+        <FlatList
+          data={combinedData}
+          keyExtractor={(item, index) => {
+            if (item.type === "post") return `post-${item.data?.$id}`;
+            if (item.type === "comments-header") return "comments-header";
+            if (item.type === "comment") return `comment-${item.data?.$id}`;
+            return `item-${index}`;
+          }}
+          renderItem={renderItem}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingHorizontal: 16,
+            paddingVertical: 8,
+          }}
+          keyboardShouldPersistTaps="handled"
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={5}
+          windowSize={5}
+          initialNumToRender={5}
+          onEndReached={handleLoadMoreComments}
+          onEndReachedThreshold={0.5}
+          ListEmptyComponent={
+            <View className="flex-1 items-center justify-center min-h-[300px]">
+              <Text className="font-bold text-lg">No comments yet</Text>
+              <Text className="text-gray-600 mt-2">
+                Be the first to comment!
+              </Text>
+            </View>
+          }
+          ListFooterComponent={
+            isFetchingNextPage ? (
+              <View className="flex-row justify-center items-center py-4">
+                <ActivityIndicator size="small" color="#1C1C3A" />
+                <Text className="ml-2 text-gray-600">
+                  Loading more comments...
+                </Text>
+              </View>
+            ) : null
+          }
         />
 
-        {/* Error API Message */}
-        {commentForm.formState.errors.content && (
-          <View className="flex-row items-center gap-2">
-            <Text style={{ color: "red" }}>Comment field is required</Text>
-          </View>
-        )}
+        <View
+          className="bg-gray-100 px-4 py-3 border-t border-gray-200"
+          style={{ paddingBottom: Math.max(insets.bottom, 12) }}
+        >
+          <Text className="font-bold mb-2">Leave a comment</Text>
+          <Controller
+            control={commentForm.control}
+            name="content"
+            rules={{ required: true }}
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                placeholder={
+                  state.type === "comment"
+                    ? `What's on your mind, ${
+                        session?.nickname || "Anonymous"
+                      }?`
+                    : `Reply to ${state.author}`
+                }
+                className="w-full px-4 py-3 rounded-xl bg-white border border-gray-300"
+                numberOfLines={4}
+                multiline
+                value={value}
+                editable={!isPending}
+                onBlur={onBlur}
+                onChangeText={onChange}
+                textAlignVertical="top"
+              />
+            )}
+          />
 
-        {(apiError || generateCommentError) && (
-          <Text style={{ color: "red" }}>
-            {apiError ||
-              generateCommentError?.message ||
-              "Something went wrong"}
-          </Text>
-        )}
-
-        <View className="flex-row items-center py-2 gap-2">
-          {/* Comment Button */}
-          <Pressable
-            onPress={commentForm.handleSubmit(submitComment)}
-            disabled={isPending}
-            className="flex-row justify-center items-center px-4 py-2 gap-2 rounded-full flex-1"
-            style={{ backgroundColor: isPending ? "#6B7280" : "#1C1C3A" }}
-          >
-            <Send size={18} color="white" />
-            <Text className="font-semibold text-white">
-              {state.type === "comment" ? "Comment" : "Reply"}
+          {/* Error Messages */}
+          {commentForm.formState.errors.content && (
+            <Text className="mt-2" style={{ color: "red" }}>
+              Comment field is required
             </Text>
-          </Pressable>
+          )}
 
-          {state.type === "reply" && (
-            <View className="flex-row items-center gap-2">
-              {/* Cancel Reply Button */}
+          {(apiError || generateCommentError) && (
+            <Text className="mt-2" style={{ color: "red" }}>
+              {apiError ||
+                generateCommentError?.message ||
+                "Something went wrong"}
+            </Text>
+          )}
+
+          <View className="flex-row items-center mt-2 gap-2">
+            <Pressable
+              onPress={commentForm.handleSubmit(submitComment)}
+              disabled={isPending}
+              className="flex-row justify-center items-center px-4 py-3 rounded-full flex-1"
+              style={{
+                backgroundColor: isPending ? "#6B7280" : "#1C1C3A",
+                minHeight: 44,
+              }}
+            >
+              <Send size={18} color="white" />
+              <Text className="font-semibold text-white ml-2">
+                {state.type === "comment" ? "Comment" : "Reply"}
+              </Text>
+            </Pressable>
+
+            {state.type === "reply" && (
               <Pressable
                 onPress={handleReset}
-                className="flex-row justify-center items-center px-4 py-2 rounded-full gap-2"
-                style={{ backgroundColor: "#1C1C3A" }}
+                className="flex-row justify-center items-center px-4 py-3 rounded-full"
+                style={{
+                  backgroundColor: "#DC2626",
+                  minHeight: 44,
+                }}
               >
                 <Text className="font-semibold text-white">Cancel</Text>
               </Pressable>
-            </View>
-          )}
+            )}
+          </View>
+
+          {/* Generate Comment Button */}
+          <Pressable
+            onPress={generateCommentForm.handleSubmit(handleGenerateComment)}
+            disabled={isGenerating}
+            className="flex-row justify-center items-center px-4 py-3 rounded-full mt-2"
+            style={{
+              backgroundColor: isGenerating ? "#6B7280" : "#1C1C3A",
+              minHeight: 44,
+            }}
+          >
+            <CogIcon size={18} color="white" />
+            <Text className="font-semibold text-white ml-2">
+              {isGenerating
+                ? "Generating..."
+                : `Generate ${state.type === "comment" ? "Comment" : "Reply"}`}
+            </Text>
+          </Pressable>
         </View>
-        {/* Generate Reply Button */}
-        <Pressable
-          onPress={generateCommentForm.handleSubmit(handleGenerateComment)}
-          disabled={isGenerating}
-          className="flex-row justify-center items-center px-4 py-2 rounded-full gap-2"
-          style={{ backgroundColor: isGenerating ? "#6B7280" : "#1C1C3A" }}
-        >
-          <CogIcon size={18} color="white" />
-          <Text className="font-semibold text-white">
-            {isGenerating
-              ? "Generating..."
-              : `Generate ${state.type === "comment" ? "Comment" : "Reply"}`}
-          </Text>
-        </Pressable>
       </View>
     </KeyboardAvoidingView>
   );

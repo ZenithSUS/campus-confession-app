@@ -93,6 +93,7 @@ const ConfessionCard = ({ confession }: { confession: ShowConfessions }) => {
               <Heart
                 size={18}
                 color={isPending ? "gray" : isLiked ? "red" : "#6b7280"}
+                fill={isPending ? "gray" : isLiked ? "red" : "#6b7280"}
               />
               <Text>{confession.likesLength}</Text>
             </TouchableOpacity>

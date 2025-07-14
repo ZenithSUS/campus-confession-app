@@ -115,6 +115,7 @@ const CommentCard = ({
                 size={18}
                 color={isPending ? "gray" : isLiked ? "red" : "#6b7280"}
                 strokeWidth={2}
+                fill={isPending ? "gray" : isLiked ? "red" : "#6b7280"}
                 stroke={isPending ? "gray" : isLiked ? "red" : "#6b7280"}
                 disabled={isPending}
               />
