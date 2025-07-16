@@ -145,16 +145,19 @@ const TopConfessions = () => {
         maxToRenderPerBatch={10}
         removeClippedSubviews={true}
         initialNumToRender={5}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         windowSize={21}
+        extraData={topConfessions}
       />
 
-      <View className="p-3 mt-2">
+      <View className="p-2 mt-4">
         <Pressable
           onPress={() => router.push("/")}
-          className="flex-1 flex-row rounded-full py-2 items-center justify-center gap-2 text-white"
+          className="flex-row rounded-full py-2 items-center justify-center gap-2"
           style={{ backgroundColor: "#1C1C3A" }}
         >
-          <EyeIcon size={18} />
+          <EyeIcon size={18} color="#fff" />
           <Text className="text-white font-semibold">View All</Text>
         </Pressable>
       </View>

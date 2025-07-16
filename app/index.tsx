@@ -7,9 +7,16 @@ import {
   useGetConfessionPagination,
 } from "@/hooks/useConfession";
 import { ShowConfessions } from "@/utils/types";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { Feather } from "lucide-react-native";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -22,14 +29,13 @@ import {
 const Home = () => {
   const { isLoading: isLoadingSession, refreshSession } = useSession();
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const flatListRef = useRef<FlatList>(null);
 
   // State
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  const [filteredConfessions, setFilteredConfessions] = useState<
-    ShowConfessions[]
-  >([]);
   const [filterCategory, setFilterCategory] = useState("");
 
   // Debounce search query
@@ -72,20 +78,32 @@ const Home = () => {
   }, [debouncedSearchQuery, refetchByQuery]);
 
   // Determine if we're in search mode
-  const isSearchMode = debouncedSearchQuery.trim().length > 0;
+  const isSearchMode = useMemo(() => {
+    return debouncedSearchQuery.trim().length > 0;
+  }, [debouncedSearchQuery]);
 
-  // Filter confessions based on current mode
-  useEffect(() => {
+  // Memoize the base confessions data
+  const baseConfessions = useMemo(() => {
     if (isSearchMode && fetchedconfessionsByQuery) {
-      const data = fetchedconfessionsByQuery.pages.flat() as ShowConfessions[];
-      setFilteredConfessions(data);
+      return fetchedconfessionsByQuery.pages.flat() as ShowConfessions[];
     } else if (!isSearchMode && fetchedconfessions) {
-      const data = fetchedconfessions.pages.flat() as ShowConfessions[];
-      setFilteredConfessions(data);
-    } else if (isSearchMode && !fetchedconfessionsByQuery) {
-      setFilteredConfessions([]);
+      return fetchedconfessions.pages.flat() as ShowConfessions[];
     }
+    return [];
   }, [fetchedconfessions, fetchedconfessionsByQuery, isSearchMode]);
+
+  // Memoize filtered confessions
+  const displayedConfessions = useMemo(() => {
+    let result = baseConfessions;
+
+    if (filterCategory && filterCategory !== "All") {
+      result = result.filter(
+        (confession) => confession.campus === filterCategory
+      );
+    }
+
+    return result;
+  }, [baseConfessions, filterCategory]);
 
   // If search is loading
   const isFetchingAnyQuery = useMemo(() => {
@@ -109,19 +127,6 @@ const Home = () => {
     return isLoading || isLoadingSession || refreshing;
   }, [isLoading, isLoadingSession, refreshing, hasError]);
 
-  // Structure data to be displayed
-  const displayedConfessions = useMemo(() => {
-    let result = filteredConfessions;
-
-    if (filterCategory && filterCategory !== "All") {
-      result = result.filter(
-        (confession) => confession.campus === filterCategory
-      );
-    }
-
-    return result;
-  }, [filteredConfessions, filterCategory]);
-
   // Load More Pages (only for pagination mode)
   const handleLoadMore = useCallback(() => {
     if (!isSearchMode && hasNextPage && !isFetchingNextPage) {
@@ -143,8 +148,10 @@ const Home = () => {
     setRefreshing(true);
     try {
       if (isSearchMode) {
+        queryClient.removeQueries({ queryKey: ["confessionByQuery"] });
         await Promise.all([refetchByQuery(), refreshSession()]);
       } else {
+        queryClient.removeQueries({ queryKey: ["confessions"] });
         await Promise.all([refetchConfession(), refreshSession()]);
       }
     } catch (error: any) {
@@ -154,6 +161,7 @@ const Home = () => {
     }
   }, [isSearchMode, refetchByQuery, refetchConfession, refreshSession]);
 
+  // Memoized render function
   const renderConfessionItem = useCallback(
     ({ item }: { item: ShowConfessions }) => (
       <ConfessionCard confession={item} />
@@ -161,6 +169,7 @@ const Home = () => {
     []
   );
 
+  // Memoized key extractor
   const keyExtractor = useCallback(
     (item: ShowConfessions) => item.$id.toString(),
     []
@@ -168,20 +177,69 @@ const Home = () => {
 
   const handleSearch = useCallback((query: string) => {
     // Remove leading and trailing spaces also remove special characters
-    const santizeQuery = query
+    const sanitizedQuery = query
       .trim()
       .toLowerCase()
       .replace(/[^a-zA-Z0-9]/g, "");
-    setSearchQuery(santizeQuery);
-    // Clear previous results immediately when search changes
-    if (query.trim().length === 0) {
-      setFilteredConfessions([]);
-    }
+    setSearchQuery(sanitizedQuery);
   }, []);
 
   const handleFilter = useCallback((category: string) => {
     setFilterCategory(category);
   }, []);
+
+  // Memoized components
+  const ListHeaderComponent = useMemo(() => {
+    if (isFetchingAnyQuery || isLoadingByQuery) {
+      return (
+        <View className="items-center py-4" pointerEvents="none">
+          <ActivityIndicator size="small" color={"#1C1C3A"} />
+          <Text className="text-gray-600">Searching confessions...</Text>
+        </View>
+      );
+    }
+    return null;
+  }, [isFetchingAnyQuery, isLoadingByQuery]);
+
+  const ListEmptyComponent = useMemo(() => {
+    if (displayedConfessions.length === 0 && !isFetchingAnyQuery) {
+      return (
+        <View className="flex-1 items-center justify-center min-h-[400px]">
+          <Text className="font-bold text-lg text-center">
+            {isSearchMode || debouncedSearchQuery
+              ? "No confessions match your search"
+              : "No confessions found yet"}
+          </Text>
+        </View>
+      );
+    }
+    return null;
+  }, [
+    displayedConfessions.length,
+    isFetchingAnyQuery,
+    isSearchMode,
+    debouncedSearchQuery,
+  ]);
+
+  const ListFooterComponent = useMemo(() => {
+    if (
+      (isFetchingNextPage || isFetchingNextPageByQuery) &&
+      (!isLoading || !isLoadingByQuery)
+    ) {
+      return (
+        <View className="items-center py-2">
+          <ActivityIndicator size="small" color={"#1C1C3A"} />
+          <Text className="text-gray-600">Loading more confessions...</Text>
+        </View>
+      );
+    }
+    return null;
+  }, [
+    isFetchingNextPage,
+    isFetchingNextPageByQuery,
+    isLoading,
+    isLoadingByQuery,
+  ]);
 
   // Show loading state
   if (AnyLoading || !isDataLoaded) {
@@ -241,65 +299,47 @@ const Home = () => {
 
   return (
     <View className="flex-1 bg-white px-4 py-2">
+      {/* Searchbar and Filter */}
       <View className="flex-row items-center mb-3 gap-2">
-        <View>
-          <Searchbar onSearch={handleSearch} />
-        </View>
-
-        <View className="flex-1">
-          <Filter onFilter={handleFilter} />
-        </View>
+        <Searchbar onSearch={handleSearch} />
+        <Filter onFilter={handleFilter} />
       </View>
 
       <FlatList
+        ref={flatListRef}
         data={displayedConfessions}
         keyExtractor={keyExtractor}
         renderItem={renderConfessionItem}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-        ListHeaderComponent={
-          isFetchingAnyQuery || isLoadingByQuery ? (
-            <View className="items-center py-4">
-              <ActivityIndicator size="small" color={"#1C1C3A"} />
-              <Text className="text-gray-600">Searching confessions...</Text>
-            </View>
-          ) : null
-        }
-        ListEmptyComponent={
-          displayedConfessions.length === 0 && !isFetchingAnyQuery ? (
-            <View className="flex-1 items-center justify-center min-h-[400px]">
-              <Text className="font-bold text-lg text-center">
-                {isSearchMode || debouncedSearchQuery
-                  ? "No confessions match your search"
-                  : "No confessions found yet"}
-              </Text>
-            </View>
-          ) : null
-        }
-        ListFooterComponent={
-          (isFetchingNextPage || isFetchingNextPageByQuery) &&
-          (!isLoading || !isLoadingByQuery) ? (
-            <View className="items-center py-2">
-              <ActivityIndicator size="small" color={"#1C1C3A"} />
-              <Text className="text-gray-600">Loading more confessions...</Text>
-            </View>
-          ) : null
-        }
+        ListHeaderComponent={ListHeaderComponent}
+        ListEmptyComponent={ListEmptyComponent}
+        ListFooterComponent={ListFooterComponent}
         contentContainerStyle={{
           flexGrow: 1,
           paddingBottom: 20,
         }}
         showsVerticalScrollIndicator={false}
         removeClippedSubviews={true}
-        maxToRenderPerBatch={5}
-        windowSize={5}
-        initialNumToRender={5}
+        maxToRenderPerBatch={10}
+        windowSize={10}
+        initialNumToRender={10}
+        updateCellsBatchingPeriod={100}
         onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.3}
+        onEndReachedThreshold={0.5}
+        getItemLayout={undefined}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        maintainVisibleContentPosition={{
+          minIndexForVisible: 0,
+          autoscrollToTopThreshold: 100,
+        }}
+        scrollEventThrottle={16}
+        extraData={`${isSearchMode}-${filterCategory}-${displayedConfessions.length}`}
       />
 
-      <View className="p-3 mt-4">
+      <View className="p-2 mt-4">
         <Pressable
           className="flex-row items-center justify-center px-4 py-2 rounded-full gap-2"
           style={{ backgroundColor: "#1C1C3A" }}

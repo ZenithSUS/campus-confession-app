@@ -4,13 +4,7 @@ import { useCreateLikeReply, useDeleteLike } from "@/hooks/useLike";
 import { timeDifference } from "@/utils/calculate-time";
 import { ShowChildrenComment } from "@/utils/types";
 import { Heart } from "lucide-react-native";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useTransition,
-} from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -27,44 +21,66 @@ const ChildrenCommentItems = ({ item }: { item: ShowChildrenComment }) => {
   const { mutateAsync: CreateLike } = useCreateLikeReply();
   const { mutateAsync: DeleteLike } = useDeleteLike();
 
-  // Local state
-  const [isPending, startTransition] = useTransition();
+  // Use ref to track processing state to avoid re-renders
+  const isLikeProcessingRef = useRef(false);
+  const [, forceUpdate] = useState(0);
 
   // Check if the user has liked the comment
   const isLiked = useMemo(() => {
     return item.likesData.some((like) => like.userId === session.$id);
-  }, [item.likesData, session.$id, CreateLike, DeleteLike]);
+  }, [item.likesData, session.$id]);
+
+  // Memoize the like count
+  const likeCount = useMemo(() => item.likesLength, [item.likesLength]);
 
   // Handle like
-  const handleLike = () => {
+  const handleLike = useCallback(async () => {
+    // Check if the user is already processing a like
+    if (isLikeProcessingRef.current) return;
+
     try {
-      startTransition(async () => {
-        try {
-          if (isLiked) {
-            const likeId = item.likesData.find(
-              (like) => like.userId === session.$id
-            )?.$id;
-            await DeleteLike({
-              likeId: likeId!,
-              childrenCommentId: item.$id,
-              commentId: item.comment.$id,
-            });
-          } else {
-            const data = {
-              childrenCommentId: item.$id,
-              commentId: item.comment.$id,
-              userId: session.$id,
-            };
-            await CreateLike(data);
-          }
-        } catch (error) {
-          console.log(error);
-        }
-      });
+      isLikeProcessingRef.current = true;
+      forceUpdate((prev) => prev + 1);
+
+      if (isLiked) {
+        const likeId = item.likesData.find(
+          (like) => like.userId === session.$id
+        )?.$id;
+        await DeleteLike({
+          likeId: likeId!,
+          childrenCommentId: item.$id,
+          commentId: item.comment.$id,
+        });
+      } else {
+        const data = {
+          childrenCommentId: item.$id,
+          commentId: item.comment.$id,
+          userId: session.$id,
+        };
+        await CreateLike(data);
+      }
     } catch (error) {
       console.log(error);
+    } finally {
+      setTimeout(() => {
+        isLikeProcessingRef.current = false;
+        forceUpdate((prev) => prev + 1);
+      }, 300);
     }
-  };
+  }, [isLiked, session.$id, CreateLike, DeleteLike, item]);
+
+  // Memoize the heart icon props
+  const heartIconProps = useMemo(() => {
+    const isProcessing = isLikeProcessingRef.current;
+    const color = isProcessing ? "gray" : isLiked ? "red" : "#6b7280";
+
+    return {
+      size: 18,
+      color,
+      strokeWidth: 2,
+      fill: color,
+    };
+  }, [isLiked, isLikeProcessingRef.current, useCreateLikeReply, useDeleteLike]);
 
   return (
     <View className="flex-col shadow p-3 gap-2 bg-white rounded-xl">
@@ -74,19 +90,17 @@ const ChildrenCommentItems = ({ item }: { item: ShowChildrenComment }) => {
       <View className="flex-row justify-between items-center">
         <View className="flex-row gap-2">
           <TouchableOpacity
-            className="flex-row items-center gap-2 cursor-pointer"
+            className="flex-row items-center gap-2 py-2 px-3 rounded-full"
+            style={{ backgroundColor: isLiked ? "#fef2f2" : "transparent" }}
             onPress={handleLike}
             activeOpacity={0.7}
-            disabled={isPending}
+            disabled={isLikeProcessingRef.current}
+            delayPressIn={0}
+            delayPressOut={0}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Heart
-              size={18}
-              color={isPending ? "gray" : isLiked ? "red" : "#6b7280"}
-              strokeWidth={2}
-              fill={isPending ? "gray" : isLiked ? "red" : "#6b7280"}
-              disabled={isPending}
-            />
-            <Text>{item.likesLength}</Text>
+            <Heart {...heartIconProps} />
+            <Text>{likeCount}</Text>
           </TouchableOpacity>
         </View>
 
@@ -108,28 +122,19 @@ const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
     error: childrenCommentsError,
   } = useGetChildrenCommentsPagination(commentId);
 
-  // Local state
-  const [fetchedReplies, setFetchedReplies] = useState<ShowChildrenComment[]>(
-    []
-  );
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  useEffect(() => {
-    if (childrenComments) {
-      const data = childrenComments.pages
-        .flat()
-        .sort(
-          (a, b) =>
-            b.likesLength - a.likesLength ||
-            new Date(b.$createdAt.split("T")[0]).getTime() -
-              new Date(a.$createdAt.split("T")[0]).getTime()
-        ) as ShowChildrenComment[];
-      setFetchedReplies(data);
-    }
+  const fetchedReplies = useMemo(() => {
+    if (!childrenComments) return [];
 
-    return () => {
-      setFetchedReplies([]);
-    };
+    return childrenComments.pages
+      .flat()
+      .sort(
+        (a, b) =>
+          b.likesLength - a.likesLength ||
+          new Date(b.$createdAt.split("T")[0]).getTime() -
+            new Date(a.$createdAt.split("T")[0]).getTime()
+      ) as ShowChildrenComment[];
   }, [childrenComments]);
 
   const onRefresh = useCallback(() => {
@@ -139,13 +144,12 @@ const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
   const isDataLoaded = useMemo(() => {
     if (childrenCommentsError) return true;
     return !!childrenComments;
-  }, [childrenComments]);
+  }, [childrenComments, childrenCommentsError]);
 
   const isAnyLoading = useMemo(() => {
     if (childrenCommentsError) return false;
-
     return isChildrenCommentsLoading;
-  }, [isChildrenCommentsLoading]);
+  }, [isChildrenCommentsLoading, childrenCommentsError]);
 
   // Callbacks and functions
   const keyExtractor = useCallback(
@@ -155,7 +159,7 @@ const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
 
   const renderChildrenComment = useCallback(
     ({ item }: { item: ShowChildrenComment }) => (
-      <ChildrenCommentItems item={item} key={item.$id} />
+      <ChildrenCommentItems item={item} />
     ),
     []
   );
@@ -167,13 +171,49 @@ const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
         setIsLoadingMore(false);
       });
     }
-  }, [
-    hasNextPage,
-    isFetchingNextPage,
-    fetchNextPage,
-    isLoadingMore,
-    fetchedReplies.length,
-  ]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, isLoadingMore]);
+
+  // Memoize the list empty component
+  const ListEmptyComponent = useMemo(
+    () => (
+      <View className="flex-1 justify-center items-center mt-2">
+        <Text className="font-bold text-lg p-4">No Replies Yet.</Text>
+      </View>
+    ),
+    []
+  );
+
+  // Memoize the list header component
+  const ListHeaderComponent = useMemo(
+    () => (
+      <Text className="flex-1 text-start font-bold text-lg mb-2">Replies</Text>
+    ),
+    []
+  );
+
+  // Memoize the item separator component
+  const ItemSeparatorComponent = useMemo(() => <View className="h-4" />, []);
+
+  const ListFooterComponent = useMemo(
+    () => (
+      <View className="flex-1 justify-center items-center mt-2">
+        {(isFetchingNextPage || isLoadingMore) && (
+          <ActivityIndicator size="large" color={"#1C1C3A"} />
+        )}
+        {hasNextPage && !isFetchingNextPage && !isLoadingMore && (
+          <TouchableOpacity
+            onPress={handleLoadMore}
+            className="px-2 py-2 items-center justify-center rounded-full mt-2"
+            style={{ backgroundColor: "#1C1C3A" }}
+            activeOpacity={0.7}
+          >
+            <Text className="text-white font-semibold">Load More Replies</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    ),
+    [hasNextPage, isFetchingNextPage, isLoadingMore, handleLoadMore]
+  );
 
   if (isAnyLoading || !isDataLoaded) {
     return (
@@ -233,11 +273,7 @@ const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
         data={fetchedReplies}
         keyExtractor={keyExtractor}
         renderItem={renderChildrenComment}
-        ListHeaderComponent={
-          <Text className="flex-1 text-start font-bold text-lg mb-2">
-            Replies
-          </Text>
-        }
+        ListHeaderComponent={ListHeaderComponent}
         contentContainerStyle={{
           flexGrow: 1,
           minHeight: "100%",
@@ -251,34 +287,20 @@ const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
         maxToRenderPerBatch={5}
         windowSize={5}
         removeClippedSubviews={false}
-        ItemSeparatorComponent={() => <View className="h-4" />}
-        ListEmptyComponent={
-          <View className="flex-1 justify-center items-center mt-2">
-            <Text className="font-bold text-lg p-4">No Replies Yet.</Text>
-          </View>
-        }
-        ListFooterComponent={
-          <View className="flex-1 justify-center items-center mt-2">
-            {(isFetchingNextPage || isLoadingMore) && (
-              <ActivityIndicator size="large" color={"#1C1C3A"} />
-            )}
-            {hasNextPage && !isFetchingNextPage && !isLoadingMore && (
-              <TouchableOpacity
-                onPress={handleLoadMore}
-                className="px-2 py-2 items-center justify-center rounded-full mt-2"
-                style={{ backgroundColor: "#1C1C3A" }}
-              >
-                <Text className="text-white font-semibold">
-                  Load More Replies
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        }
-        onEndReached={handleLoadMore}
+        maintainVisibleContentPosition={{
+          minIndexForVisible: 0,
+          autoscrollToTopThreshold: 100,
+        }}
+        extraData={fetchedReplies}
+        ItemSeparatorComponent={() => ItemSeparatorComponent}
+        ListEmptyComponent={ListEmptyComponent}
+        ListFooterComponent={ListFooterComponent}
         onEndReachedThreshold={0.8}
       />
     </View>
   );
 };
-export default React.memo(ChildrenCommentCard);
+
+export default React.memo(ChildrenCommentCard, (prevProps, nextProps) => {
+  return prevProps.commentId === nextProps.commentId;
+});

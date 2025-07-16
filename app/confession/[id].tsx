@@ -11,22 +11,17 @@ import { useGenerateComment } from "@/hooks/useConfessionAI";
 import { useCreateLike, useDeleteLike } from "@/hooks/useLike";
 import { timeDifference } from "@/utils/calculate-time";
 import { Comments, CreateComment } from "@/utils/types";
+import { useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import {
   ArrowBigLeftDash,
   CogIcon,
   Heart,
+  MessageCircle,
   Notebook,
   Send,
-  TextIcon,
 } from "lucide-react-native";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useTransition,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   ActivityIndicator,
@@ -41,13 +36,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const Confession = () => {
   const { id } = useLocalSearchParams();
   const { session, isLoading: sessionLoading, refreshSession } = useSession();
   const { state, dispatch } = useComment();
-  const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
 
   // Data fetching hooks
   const {
@@ -71,8 +65,10 @@ const Confession = () => {
   const [apiError, setApiError] = useState<string | null>(null);
   const [openReplyId, setOpenReplyId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [isPending, startTransition] = useTransition();
-  const [isGenerating, startGenerating] = useTransition();
+  const [isLikeProcessing, setIsLikeProcessing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Mutation hooks
   const { mutateAsync: createComment } = useCreateComment();
@@ -156,6 +152,12 @@ const Confession = () => {
     }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
+  useEffect(() => {
+    if (isDataLoaded && processedPost) {
+      setIsInitialLoad(false);
+    }
+  }, [isDataLoaded, processedPost]);
+
   // Reset form handler
   const handleReset = useCallback(() => {
     dispatch({ type: "RESET" });
@@ -173,70 +175,76 @@ const Confession = () => {
     if (!processedPost || !session) return;
 
     try {
+      setIsLikeProcessing(true);
       setApiError(null);
-      startTransition(async () => {
-        try {
-          if (isLiked) {
-            const likeId = processedPost.likesData?.find(
-              (like) => like.userId === session.$id
-            )?.$id;
+      if (isLiked) {
+        const likeId = processedPost.likesData?.find(
+          (like) => like.userId === session.$id
+        )?.$id;
 
-            if (likeId) {
-              await deleteLike({
-                likeId: likeId,
-                confessionId: processedPost.$id,
-              });
-            } else {
-              throw new Error("Like not found");
-            }
-          } else {
-            const data = {
-              confessionId: processedPost.$id,
-              userId: session.$id,
-            };
-            await createLike(data);
-          }
-        } catch (error) {
-          console.error("Error Processing like:", error);
-          setApiError("Failed to process like. Please try again.");
+        if (likeId) {
+          await deleteLike({
+            likeId: likeId,
+            confessionId: processedPost.$id,
+          });
+        } else {
+          throw new Error("Like not found");
         }
-      });
+      } else {
+        const data = {
+          confessionId: processedPost.$id,
+          userId: session.$id,
+        };
+        await createLike(data);
+      }
     } catch (error) {
-      console.error("Error Processing like:", error);
-      setApiError("There was an error processing your like. Please try again.");
+      console.log("There was an error on processing like:", error);
+      setApiError("Failed to process like. Please try again.");
+    } finally {
+      setIsLikeProcessing(false);
     }
-  }, [confession, session, isLiked, deleteLike, createLike, processedPost]);
+  }, [
+    confession,
+    session,
+    isLiked,
+    deleteLike,
+    createLike,
+    processedPost,
+    isLikeProcessing,
+    setApiError,
+  ]);
 
   // GenerateComment handler
   const handleGenerateComment = useCallback(async () => {
-    setApiError(null);
-    startGenerating(async () => {
-      try {
-        let data = {
-          input: generateCommentForm.getValues().input,
-        };
+    try {
+      setApiError(null);
+      setIsGenerating(true);
+      let data = {
+        input: generateCommentForm.getValues().input,
+      };
 
-        // Use the content from state if we're replying
-        if (state.type === "reply" && state.content) {
-          data.input = state.content;
-        }
-
-        const response = await generateComment(data);
-
-        if (response?.output) {
-          commentForm.setValue("content", response.output);
-        } else {
-          throw new Error("No data received from AI");
-        }
-      } catch (error) {
-        console.error("Error generating comment:", error);
-        setApiError(
-          `Failed to generate ${
-            state.type === "comment" ? "comment" : "reply"
-          }. Please try again.`
-        );
+      // Use the content from state if we're replying
+      if (state.type === "reply" && state.content) {
+        data.input = state.content;
       }
-    });
+
+      const response = await generateComment(data);
+
+      if (response?.output) {
+        commentForm.setValue("content", response.output);
+      } else {
+        throw new Error("No data received from AI");
+      }
+    } catch (error) {
+      console.log("Error generating comment:", error);
+      setApiError(
+        `Failed to generate ${
+          state.type === "comment" ? "comment" : "reply"
+        }. Please try again.`
+      );
+    } finally {
+      setIsGenerating(false);
+    }
   }, [
     generateComment,
     state.content,
@@ -253,36 +261,29 @@ const Confession = () => {
       if (!session) return;
 
       try {
-        startTransition(async () => {
-          try {
-            if (state.type === "comment") {
-              await createComment(data);
-            } else {
-              const replyData = {
-                content: data.content,
-                userId: session.$id,
-                comment: state.id,
-                author: session.nickname,
-                confessionId: data.confession,
-              };
-              await createChildrenComment(replyData);
-            }
-          } catch (error) {
-            console.error("Error submitting comment:", error);
-            setApiError("Failed to submit comment. Please try again.");
-          }
-
-          handleReset();
-        });
+        setIsSubmitting(true);
+        if (state.type === "comment") {
+          await createComment(data);
+        } else {
+          const replyData = {
+            content: data.content,
+            userId: session.$id,
+            comment: state.id,
+            author: session.nickname,
+            confessionId: data.confession,
+          };
+          await createChildrenComment(replyData);
+        }
+        handleReset();
       } catch (error) {
-        console.error("Error in submitting comment:", error);
-        setApiError(
-          "There was an error submitting your comment. Please try again."
-        );
+        console.log("Error submitting comment:", error);
+        setApiError("Failed to submit comment. Please try again.");
       } finally {
+        setIsSubmitting(false);
         dispatch({ type: "RESET" });
         dispatch({ type: "SET_TYPE", payload: "comment" });
       }
+
       Keyboard.dismiss();
     },
     [state, session, createComment, createChildrenComment, handleReset]
@@ -343,100 +344,144 @@ const Confession = () => {
 
     return [
       { type: "post", data: processedPost },
-      ...(fetchedComments.length > 0 ? [{ type: "comment-header" }] : []),
+      ...(fetchedComments.length > 0
+        ? [{ type: "comment-header" }]
+        : [{ type: "empty-comment" }]),
       ...fetchedComments.map((comment) => ({ type: "comment", data: comment })),
     ];
   }, [processedPost, fetchedComments]);
+
+  const TagsComponent = useMemo(() => {
+    if (!processedPost?.tags || processedPost?.tags.length === 0) return null;
+
+    return (
+      <View
+        className="flex-row items-center gap-2 mt-2"
+        style={{ flexWrap: "wrap" }}
+      >
+        {processedPost?.tags.map((tag, index) => (
+          <View
+            key={`${processedPost?.$id}-tag-${index}`}
+            className="px-2 py-1 rounded-full bg-blue-50 border border-blue-200"
+          >
+            <Text className="text-blue-700 font-medium text-xs">#{tag}</Text>
+          </View>
+        ))}
+      </View>
+    );
+  }, [processedPost?.tags, processedPost?.$id]);
+
+  const ListFooterComponent = useMemo(() => {
+    if (isFetchingNextPage && hasNextPage)
+      return (
+        <View className="flex-row justify-center items-center py-4 gap-2">
+          <ActivityIndicator size="small" color="#1C1C3A" />
+          <Text className="ml-2 text-gray-600">Loading more comments...</Text>
+        </View>
+      );
+
+    return null;
+  }, [isFetchingNextPage, hasNextPage]);
 
   // Render Comments and Current Post
   const renderItem = useCallback(
     ({ item }: { item: any }) => {
       if (item.type === "post") {
         return (
-          <View className="flex col gap-2 shadow p-5 rounded-xl mb-4">
-            <View className="flex-col gap-2 py-2">
-              <View className="flex-row justify-between items-start">
-                <View className="flex-1 pr-2 min-w-0">
-                  <Text className="font-bold" numberOfLines={1}>
+          <View className="mx-4 my-2" key={`post-${item.data?.$id}`}>
+            <View className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+              {/* Header */}
+              <View className="flex-row justify-between items-start mb-3">
+                <View className="flex-1">
+                  <Text
+                    className="font-semibold text-gray-800 text-base"
+                    numberOfLines={1}
+                  >
                     {item.data.user}
                   </Text>
-                  <Text className="text-sm text-gray-600">
-                    {timeDifference(item.data.$createdAt)} ago
+                  <Text className="text-gray-500 text-sm mt-1">
+                    {timeDifference(item.data.$createdAt)} ago •{" "}
+                    {item.data.campus}
                   </Text>
                 </View>
-                <Text className="text-sm text-gray-600 ml-2">
-                  {item.data.campus}
-                </Text>
               </View>
 
-              {/* Post Tags */}
-              {item.data.tags.length > 0 && (
-                <View
-                  className="flex-row items-center flex-wrap"
-                  style={{ gap: 6 }}
-                >
-                  {item.data.tags.map((tag: string, index: number) => (
-                    <Text
-                      key={index}
-                      className="px-2 py-1 rounded-full font-bold bg-gray-100 text-xs"
-                      style={{ marginBottom: 4 }}
-                    >
-                      #{tag}
-                    </Text>
-                  ))}
+              {/* Tags */}
+              {TagsComponent}
+
+              {/* Content */}
+              <Pressable>
+                <View className="mt-3 mb-4">
+                  <Text
+                    className="text-gray-800 text-base leading-6"
+                    style={{ lineHeight: 22 }}
+                  >
+                    {item.data.text}
+                  </Text>
                 </View>
-              )}
-              <Text>{item.data.text}</Text>
-            </View>
+              </Pressable>
 
-            <View className="flex-row justify-between items-center">
-              <View className="flex-row items-center" style={{ gap: 12 }}>
-                <TouchableOpacity
-                  className="flex-row items-center"
-                  onPress={handleLike}
-                  disabled={isPending}
-                  style={{
-                    opacity: isPending ? 0.5 : 1,
+              {/* Actions */}
+              <View className="flex-row items-center justify-between pt-3 border-t border-gray-50">
+                <View className="flex-row items-center gap-4">
+                  <TouchableOpacity
+                    className="flex-row items-center gap-2 py-2 px-3 rounded-full"
+                    style={{
+                      backgroundColor: isLiked ? "#fef2f2" : "transparent",
+                    }}
+                    onPress={handleLike}
+                    disabled={isLikeProcessing}
+                    delayPressIn={0}
+                    delayPressOut={0}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    activeOpacity={0.7}
+                  >
+                    <Heart
+                      size={18}
+                      color={
+                        isLikeProcessing
+                          ? "#9ca3af"
+                          : isLiked
+                          ? "#ef4444"
+                          : "#6b7280"
+                      }
+                      fill={
+                        isLikeProcessing ? "none" : isLiked ? "#ef4444" : "none"
+                      }
+                    />
+                    <Text
+                      className={`text-sm font-medium ${
+                        isLiked ? "text-red-500" : "text-gray-600"
+                      }`}
+                    >
+                      {item.data.likesLength || 0}
+                    </Text>
+                  </TouchableOpacity>
 
-                    minWidth: 44,
-                    minHeight: 44,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Heart
-                    size={20}
-                    color={isLiked ? "red" : "#6B7280"}
-                    fill={isLiked ? "red" : "none"}
-                  />
-                  <Text className="text-sm">{item.data.likesLength}</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  className="flex-row items-center"
-                  style={{
-                    minWidth: 44,
-                    minHeight: 44,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <TextIcon size={20} color="#6B7280" />
-                  <Text className="text-sm">{item.data.commentsLength}</Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    className="flex-row items-center gap-2 py-2 px-3 rounded-full"
+                    delayPressIn={0}
+                    delayPressOut={0}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <MessageCircle size={18} color="#6b7280" />
+                    <Text className="text-gray-600 text-sm font-medium">
+                      {item.data.commentsLength || 0}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           </View>
         );
       }
 
-      if (item.type === "comments-header") {
+      if (item.type === "comment-header") {
         return (
-          <View className="flex-row gap-2 items-center mb-4">
+          <View
+            className="flex-row gap-2 items-center mb-4 mx-4"
+            key="comment-header"
+          >
             <Notebook size={20} color="#6B7280" />
             <Text className="font-bold text-lg">Comments</Text>
           </View>
@@ -445,21 +490,39 @@ const Confession = () => {
 
       if (item.type === "comment") {
         return (
-          <CommentCard
-            comment={item.data}
-            openReplyId={openReplyId}
-            setOpenReplyId={setOpenReplyId}
-          />
+          <View key={`comment-${item.data?.$id}`} className="mx-4">
+            <CommentCard
+              comment={item.data}
+              openReplyId={openReplyId}
+              setOpenReplyId={setOpenReplyId}
+            />
+          </View>
+        );
+      }
+
+      if (item.type === "empty-comment") {
+        return (
+          <View className="flex-row items-center mx-4" key="empty-comment">
+            <Notebook size={20} color="#6B7280" />
+            <Text className="font-bold text-lg">No Comments Yet.</Text>
+          </View>
         );
       }
 
       return null;
     },
-    [handleLike, isPending, isLiked, openReplyId]
+    [
+      handleLike,
+      isLikeProcessing,
+      isLiked,
+      openReplyId,
+      setOpenReplyId,
+      TagsComponent,
+    ]
   );
 
   // Early returns after all hooks are defined
-  if (isAnyLoading || !isDataLoaded || !processedPost) {
+  if (isAnyLoading || !isDataLoaded || !processedPost || isInitialLoad) {
     return (
       <View className="flex-1 items-center justify-center min-h-screen">
         <ActivityIndicator size="large" color="#1C1C3A" />
@@ -508,8 +571,9 @@ const Confession = () => {
         <View className="flex items-center justify-center">
           <Text className="font-bold text-lg">Confession not found</Text>
           <TouchableOpacity
-            className="mt-4 px-4 py-2 bg-blue-500 rounded"
+            className="mt-4 px-4 py-2 rounded"
             onPress={() => router.back()}
+            style={{ backgroundColor: "#1C1C3A" }}
           >
             <Text className="text-white">Go Back</Text>
           </TouchableOpacity>
@@ -524,10 +588,7 @@ const Confession = () => {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View className="flex-1 bg-white">
-        <View
-          className="flex-row justify-between items-center px-4 py-2 bg-white border-b border-gray-200"
-          style={{ paddingTop: Math.max(insets.top, 12) }}
-        >
+        <View className="flex-row justify-between items-center px-4 py-2 bg-white border-b border-gray-200">
           <Text className="font-bold text-lg">Confession Details</Text>
           <TouchableOpacity
             className="flex-row items-center"
@@ -547,56 +608,45 @@ const Confession = () => {
           </TouchableOpacity>
         </View>
 
-        {/* FIXED: Single FlatList for better performance */}
-        <FlatList
-          data={combinedData}
-          keyExtractor={(item, index) => {
-            if (item.type === "post") return `post-${item.data?.$id}`;
-            if (item.type === "comments-header") return "comments-header";
-            if (item.type === "comment") return `comment-${item.data?.$id}`;
-            return `item-${index}`;
-          }}
-          renderItem={renderItem}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            flexGrow: 1,
-            paddingHorizontal: 16,
-            paddingVertical: 8,
-          }}
-          keyboardShouldPersistTaps="handled"
-          removeClippedSubviews={true}
-          maxToRenderPerBatch={5}
-          windowSize={5}
-          initialNumToRender={5}
-          onEndReached={handleLoadMoreComments}
-          onEndReachedThreshold={0.5}
-          ListEmptyComponent={
-            <View className="flex-1 items-center justify-center min-h-[300px]">
-              <Text className="font-bold text-lg">No comments yet</Text>
-              <Text className="text-gray-600 mt-2">
-                Be the first to comment!
-              </Text>
-            </View>
-          }
-          ListFooterComponent={
-            isFetchingNextPage ? (
-              <View className="flex-row justify-center items-center py-4">
-                <ActivityIndicator size="small" color="#1C1C3A" />
-                <Text className="ml-2 text-gray-600">
-                  Loading more comments...
+        <View style={{ flex: 1 }}>
+          <FlatList
+            data={combinedData}
+            keyExtractor={(item, index) => {
+              if (item.type === "post")
+                return `post-${item.data?.$id ?? index}`;
+              if (item.type === "comment-header") return "comment-header";
+              if (item.type === "comment")
+                return `comment-${item.data?.$id ?? index}`;
+              return `item-${index}`;
+            }}
+            renderItem={renderItem}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            scrollEventThrottle={16}
+            onEndReached={handleLoadMoreComments}
+            onEndReachedThreshold={0.5}
+            contentContainerStyle={{
+              paddingVertical: 8,
+              paddingBottom: 24,
+              minHeight: "100%",
+            }}
+            extraData={openReplyId}
+            ListEmptyComponent={
+              <View className="flex-1 items-center justify-center min-h-[300px]">
+                <Text className="font-bold text-lg">No comments yet</Text>
+                <Text className="text-gray-600 mt-2">
+                  Be the first to comment!
                 </Text>
               </View>
-            ) : null
-          }
-        />
+            }
+            ListFooterComponent={ListFooterComponent}
+          />
+        </View>
 
-        <View
-          className="bg-gray-100 px-4 py-3 border-t border-gray-200"
-          style={{ paddingBottom: Math.max(insets.bottom, 12) }}
-        >
+        <View className="bg-gray-100 px-4 py-3 border-t border-gray-200">
           <Text className="font-bold mb-2">Leave a comment</Text>
           <Controller
             control={commentForm.control}
@@ -615,7 +665,7 @@ const Confession = () => {
                 numberOfLines={4}
                 multiline
                 value={value}
-                editable={!isPending}
+                editable={!isSubmitting}
                 onBlur={onBlur}
                 onChangeText={onChange}
                 textAlignVertical="top"
@@ -641,10 +691,10 @@ const Confession = () => {
           <View className="flex-row items-center mt-2 gap-2">
             <Pressable
               onPress={commentForm.handleSubmit(submitComment)}
-              disabled={isPending}
+              disabled={isSubmitting}
               className="flex-row justify-center items-center px-4 py-3 rounded-full flex-1"
               style={{
-                backgroundColor: isPending ? "#6B7280" : "#1C1C3A",
+                backgroundColor: isSubmitting ? "#6B7280" : "#1C1C3A",
                 minHeight: 44,
               }}
             >
@@ -657,7 +707,7 @@ const Confession = () => {
             {state.type === "reply" && (
               <Pressable
                 onPress={handleReset}
-                className="flex-row justify-center items-center px-4 py-3 rounded-full"
+                className="flex-row justify-center items-center px-4 py-2 rounded-full"
                 style={{
                   backgroundColor: "#DC2626",
                   minHeight: 44,

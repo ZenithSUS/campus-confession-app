@@ -10,7 +10,7 @@ import { CreateConfession, RefineConfession } from "@/utils/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { RelativePathString, router, usePathname } from "expo-router";
 import { ArrowBigLeftDash } from "lucide-react-native";
-import React, { useCallback, useEffect, useState, useTransition } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   ActivityIndicator,
@@ -43,9 +43,12 @@ const NewConfession = () => {
   const [refinedConfession, setRefinedConfession] = useState("");
   const [isInCooldown, setIsInCooldown] = useState(false);
   const [cooldownTimeLeft, setCooldownTimeLeft] = useState(0);
-  const [isPending, startTransition] = useTransition();
-  const [isGenerating, startGenerating] = useTransition();
-  const [isGeneratingTags, startGeneratingTags] = useTransition();
+
+  // Replace useTransition with regular state
+  const [isPending, setIsPending] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingTags, setIsGeneratingTags] = useState(false);
+
   const [isRefined, setRefined] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -61,8 +64,8 @@ const NewConfession = () => {
   // Form for posting confession
   const postForm = useForm<NewConfession>({
     defaultValues: {
-      user: session.nickname,
-      userId: session.$id,
+      user: session?.nickname || "",
+      userId: session?.$id || "",
       text: "",
       campus: "",
       tags: [],
@@ -75,9 +78,17 @@ const NewConfession = () => {
     checkCooldownStatus();
   }, []);
 
+  // Update form defaults when session changes
+  useEffect(() => {
+    if (session) {
+      postForm.setValue("user", session.nickname);
+      postForm.setValue("userId", session.$id);
+    }
+  }, [session, postForm]);
+
   // Cooldown timer effect
   useEffect(() => {
-    let interval: Number;
+    let interval: number | null = null;
 
     if (isInCooldown) {
       interval = setInterval(() => {
@@ -92,7 +103,7 @@ const NewConfession = () => {
     }
 
     return () => {
-      if (interval) clearInterval(interval as number);
+      if (interval) clearInterval(interval);
     };
   }, [isInCooldown]);
 
@@ -142,6 +153,9 @@ const NewConfession = () => {
 
   // Submit confession
   const submitConfession = async (data: NewConfession) => {
+    console.log("Submitting confession:", data);
+    console.log("Form errors:", postForm.formState.errors);
+
     // Check cooldown before submitting
     if (isInCooldown) {
       Alert.alert(
@@ -156,95 +170,91 @@ const NewConfession = () => {
 
     try {
       setApiError(null);
-      startTransition(async () => {
-        try {
-          // Make the tags into an array of strings
-          if (data.inputTag && data.inputTag.length > 0) {
-            data["tags"] = data.inputTag.split(" ").map((tag) => tag.trim());
-          }
+      setIsPending(true);
 
-          // Dont include the inputTag field in the final data
-          const { inputTag, ...finalData } = data;
-          await createConfession(finalData);
-          queryClient.invalidateQueries({ queryKey: ["confessions"] });
+      // Make the tags into an array of strings
+      if (data.inputTag && data.inputTag.length > 0) {
+        data["tags"] = data.inputTag.split(" ").map((tag) => tag.trim());
+      }
 
-          // Store last post time and activate cooldown
-          const now = Date.now();
-          await storeSingleData("lastPostTime", now.toString());
+      // Don't include the inputTag field in the final data
+      const { inputTag, ...finalData } = data;
 
-          // Set cooldown state
-          setIsInCooldown(true);
-          setCooldownTimeLeft(POST_COOLDOWN);
+      console.log("Final data being sent:", finalData);
 
-          // Show success message
-          Alert.alert(
-            "Success",
-            "Your confession has been posted successfully!",
-            [{ text: "OK" }]
-          );
+      await createConfession(finalData);
+      queryClient.invalidateQueries({ queryKey: ["confessions"] });
 
-          // Only navigate if successful
-          if (!isPending) {
-            router.replace("/");
-          }
-        } catch (error) {
-          console.error("Submit confession error:", error);
-          setApiError("Failed to post confession. Please try again.");
+      // Store last post time and activate cooldown
+      const now = Date.now();
+      await storeSingleData("lastPostTime", now.toString());
 
-          // Show user-friendly alert
-          Alert.alert(
-            "Error",
-            "Failed to post your confession. Please check your connection and try again.",
-            [{ text: "OK" }]
-          );
-        }
-      });
+      // Set cooldown state
+      setIsInCooldown(true);
+      setCooldownTimeLeft(POST_COOLDOWN);
+
+      // Show success message
+      Alert.alert("Success", "Your confession has been posted successfully!", [
+        { text: "OK" },
+      ]);
+
+      // Navigate back
+      router.replace("/");
     } catch (error) {
-      console.error("Submit confession outer error:", error);
-      setApiError("An unexpected error occurred.");
+      console.error("Submit confession error:", error);
+      setApiError("Failed to post confession. Please try again.");
+
+      // Show user-friendly alert
+      Alert.alert(
+        "Error",
+        "Failed to post your confession. Please check your connection and try again.",
+        [{ text: "OK" }]
+      );
+    } finally {
+      setIsPending(false);
     }
   };
 
   // Refine confession
   const handleRefine = async (data: RefineConfession) => {
+    console.log("Refining confession:", data);
+
     try {
       setApiError(null);
+      setIsGenerating(true);
 
-      startGenerating(async () => {
-        try {
-          const response = await refineConfession({
-            confession: data.confession,
-            context: data.context,
-          });
-
-          if (response?.output) {
-            setRefinedConfession(response.output);
-            setRefined(true);
-            // Auto-fill the post form with refined text
-            postForm.setValue("text", response.output);
-          } else {
-            throw new Error("No data received from AI refinement");
-          }
-        } catch (error) {
-          console.error("Refine error:", error);
-          setApiError("Failed to refine confession with AI. Please try again.");
-
-          // Show user-friendly alert
-          Alert.alert(
-            "AI Refinement Failed",
-            "Unable to refine your confession. You can still post it manually.",
-            [{ text: "OK" }]
-          );
-        }
+      const response = await refineConfession({
+        confession: data.confession,
+        context: data.context,
       });
+
+      if (response?.output) {
+        setRefinedConfession(response.output);
+        setRefined(true);
+        // Auto-fill the post form with refined text
+        postForm.setValue("text", response.output);
+      } else {
+        throw new Error("No data received from AI refinement");
+      }
     } catch (error) {
-      console.error("Handle refine outer error:", error);
-      setApiError("An unexpected error occurred during refinement.");
+      console.error("Refine error:", error);
+      setApiError("Failed to refine confession with AI. Please try again.");
+
+      // Show user-friendly alert
+      Alert.alert(
+        "AI Refinement Failed",
+        "Unable to refine your confession. You can still post it manually.",
+        [{ text: "OK" }]
+      );
+    } finally {
+      setIsGenerating(false);
     }
   };
 
   // Generate Tags for confession
   const handleGenerateTags = async () => {
+    console.log("Generating tags for:", postForm.getValues("text"));
+
     try {
       setApiError(null);
 
@@ -253,50 +263,43 @@ const NewConfession = () => {
         return;
       }
 
-      startGeneratingTags(async () => {
-        try {
-          const response = await generateTags({
-            input: postForm.getValues("text"),
-          });
+      setIsGeneratingTags(true);
 
-          if (response?.output) {
-            // The output is a array of strings, join them into a single string
-            const tags = response.output.join(" ");
-            postForm.setValue("inputTag", tags);
-            updateTags(tags);
-          } else {
-            throw new Error("No data received from AI tag generation");
-          }
-        } catch (error) {
-          console.error("Generate tags error:", error);
-          setApiError("Failed to generate tags with AI. Please try again.");
-
-          // Show user-friendly alert
-          Alert.alert(
-            "AI Tag Generation Failed",
-            "Unable to generate tags for your confession. You can still post it manually.",
-            [{ text: "OK" }]
-          );
-        }
+      const response = await generateTags({
+        input: postForm.getValues("text"),
       });
+
+      if (response?.output) {
+        // The output is a array of strings, join them into a single string
+        const tags = response.output.join(" ");
+        postForm.setValue("inputTag", tags);
+        updateTags(tags);
+      } else {
+        throw new Error("No data received from AI tag generation");
+      }
     } catch (error) {
-      console.error("Handle generate tags outer error:", error);
-      setApiError("An unexpected error occurred during tag generation.");
+      console.error("Generate tags error:", error);
+      setApiError("Failed to generate tags with AI. Please try again.");
+
+      // Show user-friendly alert
+      Alert.alert(
+        "AI Tag Generation Failed",
+        "Unable to generate tags for your confession. You can still post it manually.",
+        [{ text: "OK" }]
+      );
+    } finally {
+      setIsGeneratingTags(false);
     }
   };
 
   // Update tags
-  const updateTags = useCallback(
-    (tags: string) => {
-      const separatedTags = tags.split(" ");
-      const filteredTags = separatedTags.filter(
-        (tag) => tag.trim() !== "" || tag.length > 0
-      );
-
-      setTags(filteredTags);
-    },
-    [setTags, setApiError, postForm]
-  );
+  const updateTags = useCallback((tags: string) => {
+    const separatedTags = tags.split(" ");
+    const filteredTags = separatedTags.filter(
+      (tag) => tag.trim() !== "" && tag.length > 0
+    );
+    setTags(filteredTags);
+  }, []);
 
   // Navigate to another page
   const navigateTo = (path: string) => {
@@ -322,6 +325,8 @@ const NewConfession = () => {
     <ScrollView
       className="flex-1 bg-white px-2 py-2 flex-col gap-2"
       showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      nestedScrollEnabled={true}
       refreshControl={
         <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
       }
@@ -430,7 +435,7 @@ const NewConfession = () => {
 
             <Pressable
               className="items-center justify-center p-2 rounded-xl"
-              style={[styles.AIbutton, isGenerating && styles.disabledButton]}
+              style={[styles.AIbutton, isGenerating && { opacity: 0.6 }]}
               onPress={refineForm.handleSubmit(handleRefine)}
               disabled={isGenerating}
             >
@@ -516,8 +521,10 @@ const NewConfession = () => {
                   multiline={true}
                   numberOfLines={2}
                   placeholder="Add space for separated tags..."
-                  onChangeText={onChange}
-                  onChange={(e) => updateTags(e.nativeEvent.text)}
+                  onChangeText={(text) => {
+                    onChange(text);
+                    updateTags(text);
+                  }}
                   editable={!isGeneratingTags}
                   onBlur={onBlur}
                   value={value}
@@ -528,7 +535,7 @@ const NewConfession = () => {
             {/* Generate Tags */}
             <Pressable
               className="items-center justify-center p-2 rounded-xl mt-2"
-              style={[styles.tagButton, isPending && styles.disabledButton]}
+              style={[styles.tagButton, isGeneratingTags && { opacity: 0.6 }]}
               onPress={handleGenerateTags}
               disabled={isGeneratingTags}
             >
@@ -542,9 +549,9 @@ const NewConfession = () => {
                 className="flex-row gap-2 mt-2"
                 style={{ flexWrap: "wrap" }}
               >
-                {tags.map((tag) => (
+                {tags.map((tag, index) => (
                   <View
-                    key={tag}
+                    key={`${tag}-${index}`}
                     className="items-center justify-center p-2 rounded-xl"
                     style={styles.tags}
                   >
@@ -558,12 +565,12 @@ const NewConfession = () => {
               <Text style={{ color: "red" }}>Confession text is required</Text>
             )}
 
-            <View className="flex-row items-center  gap-2 mt-2">
+            <View className="flex-row items-center gap-2 mt-2">
               <Pressable
                 className="items-center justify-center p-2 rounded-xl flex-1"
                 style={[
                   styles.postButton,
-                  (isPending || isInCooldown) && styles.disabledButton,
+                  (isPending || isInCooldown) && { opacity: 0.6 },
                 ]}
                 onPress={postForm.handleSubmit(submitConfession)}
                 disabled={isPending || isInCooldown}

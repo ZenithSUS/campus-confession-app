@@ -12,7 +12,7 @@ export const refineConfession = async (
     });
     return response;
   } catch (error) {
-    console.error("API Error:", error);
+    console.log("API Error:", error);
     throw error;
   }
 };
@@ -28,7 +28,7 @@ export const generateComment = async (
     });
     return response;
   } catch (error) {
-    console.error("API Error:", error);
+    console.log("API Error:", error);
     throw error;
   }
 };
@@ -44,7 +44,7 @@ export const generateTags = async (
     });
     return response;
   } catch (error) {
-    console.error("API Error:", error);
+    console.log("API Error:", error);
     throw error;
   }
 };

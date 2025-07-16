@@ -9,20 +9,18 @@ export const Filter = ({
   onFilter: (category: string) => void;
 }) => {
   return (
-    <View className="w-full p-3 rounded-xl">
-      <View className="flex-1 relative">
-        <RNPickerSelect
-          value={"All"}
-          onValueChange={(value) => onFilter(value)}
-          items={campuses.map((campus) => ({
-            label: campus.name,
-            value: campus.id,
-          }))}
-          style={styles}
-          placeholder={{ label: "All", value: "All" }}
-          useNativeAndroidPickerStyle={false}
-        />
-      </View>
+    <View>
+      <RNPickerSelect
+        value={"All"}
+        onValueChange={(value) => onFilter(value)}
+        items={campuses.map((campus) => ({
+          label: campus.name,
+          value: campus.id,
+        }))}
+        style={styles}
+        placeholder={{ label: "All", value: "All" }}
+        useNativeAndroidPickerStyle={false}
+      />
     </View>
   );
 };

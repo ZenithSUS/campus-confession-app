@@ -20,7 +20,7 @@ export default function App() {
               <link
                 rel="icon"
                 type="image/png"
-                href="../assets/icons/ZenithConfession.png"
+                href="/assets/icons/ZenithConfession.png"
               />
               <meta
                 name="viewport"
