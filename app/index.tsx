@@ -184,9 +184,12 @@ const Home = () => {
     setSearchQuery(sanitizedQuery);
   }, []);
 
-  const handleFilter = useCallback((category: string) => {
-    setFilterCategory(category);
-  }, []);
+  const handleFilter = useCallback(
+    (category: string) => {
+      setFilterCategory(category);
+    },
+    [setFilterCategory, filterCategory]
+  );
 
   // Memoized components
   const ListHeaderComponent = useMemo(() => {
@@ -266,7 +269,7 @@ const Home = () => {
 
     return (
       <View className="flex-1 items-center justify-center min-h-screen px-4">
-        <View className="flex-col items-center gap-4">
+        <View className="flex-col items-center gap-2">
           <Text
             className="text-center text-lg font-semibold"
             style={{ color: "red" }}
@@ -302,7 +305,7 @@ const Home = () => {
       {/* Searchbar and Filter */}
       <View className="flex-row items-center mb-3 gap-2">
         <Searchbar onSearch={handleSearch} />
-        <Filter onFilter={handleFilter} />
+        <Filter onFilter={handleFilter} category={filterCategory} />
       </View>
 
       <FlatList

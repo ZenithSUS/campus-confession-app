@@ -3,15 +3,16 @@ import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import RNPickerSelect from "react-native-picker-select";
 
-export const Filter = ({
-  onFilter,
-}: {
+interface FilterProps {
   onFilter: (category: string) => void;
-}) => {
+  category: string;
+}
+
+export const Filter = ({ onFilter, category }: FilterProps) => {
   return (
     <View>
       <RNPickerSelect
-        value={"All"}
+        value={category}
         onValueChange={(value) => onFilter(value)}
         items={campuses.map((campus) => ({
           label: campus.name,
