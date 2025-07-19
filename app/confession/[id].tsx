@@ -293,6 +293,8 @@ const Confession = () => {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
+      queryClient.removeQueries({ queryKey: ["confession", id] });
+      queryClient.removeQueries({ queryKey: ["comments", id] });
       await Promise.all([
         refetchConfession(),
         refetchConfessionComments(),
@@ -446,7 +448,11 @@ const Confession = () => {
                           : "#6b7280"
                       }
                       fill={
-                        isLikeProcessing ? "none" : isLiked ? "#ef4444" : "none"
+                        isLikeProcessing
+                          ? "none"
+                          : isLiked
+                          ? "#ef4444"
+                          : "#6b7280"
                       }
                     />
                     <Text
@@ -483,7 +489,7 @@ const Confession = () => {
             key="comment-header"
           >
             <Notebook size={20} color="#6B7280" />
-            <Text className="font-bold text-lg">Comments</Text>
+            <Text className="font-bold text-lg text-gray-800">Comments</Text>
           </View>
         );
       }
@@ -589,7 +595,9 @@ const Confession = () => {
     >
       <View className="flex-1 bg-white">
         <View className="flex-row justify-between items-center px-4 py-2 bg-white border-b border-gray-200">
-          <Text className="font-bold text-lg">Confession Details</Text>
+          <Text className="font-bold text-lg text-gray-800">
+            Confession Details
+          </Text>
           <TouchableOpacity
             className="flex-row items-center"
             onPress={() => router.back()}
@@ -604,7 +612,7 @@ const Confession = () => {
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <ArrowBigLeftDash size={20} color="#1C1C3A" />
-            <Text className="text-sm">Back</Text>
+            <Text className="text-sm text-gray-800">Back</Text>
           </TouchableOpacity>
         </View>
 

@@ -131,7 +131,7 @@ const NewSessionModal = ({ openModal, setOpenModal }: Props) => {
             maxWidth: 400,
           }}
         >
-          <Text className="text-lg font-semibold text-center mb-4">
+          <Text className="text-lg font-semibold text-center mb-4 text-gray-800">
             New Session
           </Text>
           <Text className="text-gray-600 text-center mb-6">

@@ -1,13 +1,13 @@
 {
   "expo": {
-    "name": "campus-confession-app",
-    "slug": "campus-confession-app",
+    "name": "Zenith Confession",
+    "slug": "zenith-confession-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icons/ZenithConfession.png",
-    "scheme": "campusconfessionapp",
+    "scheme": "zenithconfessionapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true
     },
@@ -16,15 +16,13 @@
         "foregroundImage": "./assets/icons/ZenithConfession.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.zenithsus.campusconfessionapp"
     },
     "web": {
       "bundler": "metro",
       "output": "export",
-      "favicon": "./assets/images/ZenithConfession.png"
-    },
-    "experimental": {
-      "router": true
+      "favicon": "./assets/icons/ZenithConfession.png"
     },
     "plugins": [
       "expo-router",
@@ -37,7 +35,16 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-head",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "zenith-campus-confession",
+          "organization": "zenithsus"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
@@ -45,8 +52,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "0dcf6d42-2677-4449-b409-f6d7cc9eaa28"
+        "projectId": "2a9ce1bf-2c5f-44bf-8bdb-27c875dfd11a"
       }
-    }
+    },
+    "owner": "zenithsus"
   }
 }

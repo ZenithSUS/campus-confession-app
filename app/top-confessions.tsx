@@ -1,12 +1,13 @@
 import ConfessionCard from "@/components/confession-card";
+import { useSession } from "@/context/session";
 import { useGetTopConfessions } from "@/hooks/useConfession";
 import { ShowConfessions } from "@/utils/types";
+import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { EyeIcon } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Button,
   FlatList,
   Pressable,
   RefreshControl,
@@ -18,6 +19,10 @@ const TopConfessions = () => {
   // Local state
   const [refresh, setRefresh] = useState(false);
 
+  // Hooks
+  const queryClient = useQueryClient();
+  const { refreshSession, isLoading: isLoadingSession } = useSession();
+
   // Fetch data in API
   const {
     data: confessions,
@@ -27,12 +32,14 @@ const TopConfessions = () => {
   } = useGetTopConfessions();
 
   const isAnyLoading = useMemo(() => {
-    return topConfessionsLoading;
-  }, [topConfessionsLoading]);
+    if (error && !refresh) return false;
+    return topConfessionsLoading || isLoadingSession;
+  }, [topConfessionsLoading, isLoadingSession, error]);
 
   const isDataLoaded = useMemo(() => {
+    if (!!error) return true;
     return !!confessions;
-  }, [confessions]);
+  }, [confessions, error]);
 
   const topConfessions = useMemo(() => {
     if (!isDataLoaded) return [];
@@ -54,13 +61,14 @@ const TopConfessions = () => {
   const onRefresh = useCallback(async () => {
     try {
       setRefresh(true);
-      await refetchConfessions();
+      queryClient.removeQueries({ queryKey: ["topConfessions"] });
+      await Promise.all([refetchConfessions(), refreshSession()]);
     } catch (error) {
       console.log("Error refreshing data:", error);
     } finally {
       setRefresh(false);
     }
-  }, []);
+  }, [queryClient, refetchConfessions, refreshSession, setRefresh, error]);
 
   if (isAnyLoading || !isDataLoaded) {
     return (
@@ -87,7 +95,10 @@ const TopConfessions = () => {
     return (
       <View className="flex-1 items-center justify-center min-h-screen px-4">
         <View className="flex-col items-center gap-4">
-          <Text className="text-error text-center text-lg font-semibold">
+          <Text
+            className="text-center text-lg font-semibold"
+            style={{ color: "red" }}
+          >
             {isTimeoutError
               ? "Server is not responding"
               : isNetworkError
@@ -103,7 +114,13 @@ const TopConfessions = () => {
               : currentError?.message || "An unexpected error occurred"}
           </Text>
 
-          <Button onPress={onRefresh} title="Try Again" />
+          <Pressable
+            onPress={onRefresh}
+            className="mt-4 px-2 py-2 rounded-full"
+            style={{ backgroundColor: "#1C1C3A" }}
+          >
+            <Text className="text-white font-semibold">Retry</Text>
+          </Pressable>
         </View>
       </View>
     );

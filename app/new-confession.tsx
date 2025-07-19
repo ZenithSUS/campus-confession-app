@@ -333,14 +333,14 @@ const NewConfession = () => {
     >
       {/* Header Section */}
       <View className="flex-row items-center justify-between gap-2 py-2">
-        <Text className="font-bold text-lg">New Confession</Text>
+        <Text className="font-bold text-lg text-gray-800">New Confession</Text>
 
         <TouchableOpacity
           className="flex-row items-center gap-2"
           onPress={() => navigateTo("/")}
         >
           <ArrowBigLeftDash size={22} color="#1C1C3A" />
-          <Text>Back</Text>
+          <Text className="font-medium text-gray-800">Back</Text>
         </TouchableOpacity>
       </View>
 
@@ -374,15 +374,15 @@ const NewConfession = () => {
       <View className="bg-gray-100 rounded-xl">
         <View className="flex-col gap-2 p-4">
           <View className="flex-row gap-2">
-            <Text className="text-lg">Post as:</Text>
-            <Text className="font-bold text-lg" numberOfLines={1}>
+            <Text className="text-lg text-gray-800">Post as:</Text>
+            <Text className="font-bold text-lg text-gray-800" numberOfLines={1}>
               {session?.nickname || "Anonymous"}
             </Text>
           </View>
 
           {/* AI Refine Form */}
           <View className="bg-blue-50 p-3 rounded-xl mb-4">
-            <Text className="font-bold text-md mb-2">
+            <Text className="font-bold text-md mb-2 text-gray-800">
               ✨ AI Refine (Optional)
             </Text>
             <Controller
@@ -391,7 +391,7 @@ const NewConfession = () => {
               rules={{ required: true }}
               render={({ field: { onChange, onBlur, value } }) => (
                 <TextInput
-                  className="bg-white px-2 py-2 rounded-xl mb-2"
+                  className="bg-white px-2 py-2 rounded-xl mb-2 text-gray-800"
                   numberOfLines={3}
                   multiline={true}
                   placeholder="Enter your confession to refine with AI..."
@@ -409,14 +409,16 @@ const NewConfession = () => {
               </Text>
             )}
 
-            <Text className="font-bold text-md mb-2">Context Prompt:</Text>
+            <Text className="font-bold text-md mb-2 text-gray-800">
+              Context Prompt:
+            </Text>
             <Controller
               control={refineForm.control}
               name="context"
               rules={{ required: true }}
               render={({ field: { onChange, onBlur, value } }) => (
                 <TextInput
-                  className="bg-white px-2 py-2 rounded-xl mb-2"
+                  className="bg-white px-2 py-2 rounded-xl mb-2 text-gray-800"
                   numberOfLines={3}
                   value={value}
                   onBlur={onBlur}
@@ -447,9 +449,11 @@ const NewConfession = () => {
             {/* Refined Result */}
             {isRefined && (
               <View className="mt-3">
-                <Text className="font-bold text-md mb-2">Refined Result:</Text>
+                <Text className="font-bold text-md mb-2 text-gray-800">
+                  Refined Result:
+                </Text>
                 <TextInput
-                  className="bg-white px-2 py-2 rounded-xl"
+                  className="bg-white px-2 py-2 rounded-xl text-gray-800"
                   numberOfLines={3}
                   multiline={true}
                   placeholder="Refined Confession..."
@@ -462,7 +466,10 @@ const NewConfession = () => {
 
           {/* Post Confession Form */}
           <View className="bg-green-50 p-3 rounded-xl">
-            <Text className="font-bold mb-2" style={{ fontSize: 16 }}>
+            <Text
+              className="font-bold mb-2 text-gray-800"
+              style={{ fontSize: 16 }}
+            >
               📝 Post Confession
             </Text>
 
@@ -491,14 +498,16 @@ const NewConfession = () => {
               <Text style={{ color: "red" }}>Campus is required</Text>
             )}
 
-            <Text className="font-bold mb-1 mt-2">Final Confession</Text>
+            <Text className="font-bold mb-1 mt-2 text-gray-800">
+              Final Confession
+            </Text>
             <Controller
               control={postForm.control}
               name="text"
               rules={{ required: true }}
               render={({ field: { onChange, onBlur, value } }) => (
                 <TextInput
-                  className="bg-white px-2 py-2 rounded-xl"
+                  className="bg-white px-2 py-2 rounded-xl text-gray-800"
                   numberOfLines={5}
                   multiline={true}
                   placeholder="Your final confession text..."
@@ -510,14 +519,14 @@ const NewConfession = () => {
               )}
             />
 
-            <Text className="font-bold mt-2">Tags</Text>
+            <Text className="font-bold mt-2 text-gray-800">Tags</Text>
             <Controller
               control={postForm.control}
               name="inputTag"
               rules={{ required: false }}
               render={({ field: { onChange, onBlur, value } }) => (
                 <TextInput
-                  className="bg-white px-2 py-2 rounded-xl"
+                  className="bg-white px-2 py-2 rounded-xl text-gray-800"
                   multiline={true}
                   numberOfLines={2}
                   placeholder="Add space for separated tags..."

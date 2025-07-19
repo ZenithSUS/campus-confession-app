@@ -136,7 +136,9 @@ const CommentCard = ({
             </Text>
           </View>
         </View>
-        <Text>{comment.content}</Text>
+        <Text className="text-gray-800" style={{ lineHeight: 20 }}>
+          {comment.content}
+        </Text>
 
         <View className="flex-row items-center rounded-xl justify-between">
           <View className="flex-row items-center gap-2">
@@ -158,7 +160,13 @@ const CommentCard = ({
                 fill={isLikeProcessing ? "gray" : isLiked ? "red" : "#6b7280"}
                 stroke={isLikeProcessing ? "gray" : isLiked ? "red" : "#6b7280"}
               />
-              <Text>{comment.likesLength}</Text>
+              <Text
+                className={`text-sm font-medium ${
+                  isLiked ? "text-red-500" : "text-gray-600"
+                }`}
+              >
+                {comment.likesLength || 0}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -166,7 +174,9 @@ const CommentCard = ({
               onPress={handleShowReplies}
             >
               <MessageCircle size={18} color="#6b7280" />
-              <Text>{comment.repliesLength}</Text>
+              <Text className="text-gray-600 text-sm font-medium">
+                {comment.repliesLength || 0}
+              </Text>
             </TouchableOpacity>
           </View>
 

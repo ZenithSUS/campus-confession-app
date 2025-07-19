@@ -84,8 +84,12 @@ const ChildrenCommentItems = ({ item }: { item: ShowChildrenComment }) => {
 
   return (
     <View className="flex-col shadow p-3 gap-2 bg-white rounded-xl">
-      <Text className="font-bold">{item.author}</Text>
-      <Text className="text-sm py-2">{item.content}</Text>
+      <Text className="font-semibold text-gray-800 text-base">
+        {item.author}
+      </Text>
+      <Text className="text-sm py-2 text-gray-800" style={{ lineHeight: 20 }}>
+        {item.content}
+      </Text>
 
       <View className="flex-row justify-between items-center">
         <View className="flex-row gap-2">
@@ -100,11 +104,19 @@ const ChildrenCommentItems = ({ item }: { item: ShowChildrenComment }) => {
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Heart {...heartIconProps} />
-            <Text>{likeCount}</Text>
+            <Text
+              className={`text-sm font-medium ${
+                isLiked ? "text-red-500" : "text-gray-500"
+              }`}
+            >
+              {likeCount || 0}
+            </Text>
           </TouchableOpacity>
         </View>
 
-        <Text className="text-xs">{timeDifference(item.$createdAt)} ago</Text>
+        <Text className="text-sm text-gray-500">
+          {timeDifference(item.$createdAt)} ago
+        </Text>
       </View>
     </View>
   );
@@ -219,7 +231,7 @@ const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
     return (
       <View className="flex-1 p-4 justify-center items-center mt-2">
         <ActivityIndicator size="large" color={"#1C1C3A"} />
-        <Text className="text-sm p-4">Loading...</Text>
+        <Text className="text-sm p-4 text-gray-500">Loading...</Text>
       </View>
     );
   }
