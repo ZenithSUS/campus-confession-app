@@ -3,6 +3,7 @@ import { useGetChildrenCommentsPagination } from "@/hooks/useChildrenComment";
 import { useCreateLikeReply, useDeleteLike } from "@/hooks/useLike";
 import { timeDifference } from "@/utils/calculate-time";
 import { ShowChildrenComment } from "@/utils/types";
+import { useQueryClient } from "@tanstack/react-query";
 import { Heart } from "lucide-react-native";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
@@ -134,6 +135,8 @@ const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
     error: childrenCommentsError,
   } = useGetChildrenCommentsPagination(commentId);
 
+  const queryClient = useQueryClient();
+
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const fetchedReplies = useMemo(() => {
@@ -150,8 +153,11 @@ const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
   }, [childrenComments]);
 
   const onRefresh = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: ["childrenComments", commentId],
+    });
     refetchChildrenComments();
-  }, [refetchChildrenComments]);
+  }, [refetchChildrenComments, commentId]);
 
   const isDataLoaded = useMemo(() => {
     if (childrenCommentsError) return true;
@@ -189,7 +195,9 @@ const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
   const ListEmptyComponent = useMemo(
     () => (
       <View className="flex-1 justify-center items-center mt-2">
-        <Text className="font-bold text-lg p-4">No Replies Yet.</Text>
+        <Text className="font-semibold text-lg p-4 text-gray-500">
+          No Replies Yet.
+        </Text>
       </View>
     ),
     []
@@ -198,7 +206,9 @@ const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
   // Memoize the list header component
   const ListHeaderComponent = useMemo(
     () => (
-      <Text className="flex-1 text-start font-bold text-lg mb-2">Replies</Text>
+      <Text className="flex-1 text-start font-bold text-lg mb-2 text-gray-500">
+        Replies
+      </Text>
     ),
     []
   );
@@ -224,7 +234,15 @@ const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
         )}
       </View>
     ),
-    [hasNextPage, isFetchingNextPage, isLoadingMore, handleLoadMore]
+    [
+      hasNextPage,
+      isFetchingNextPage,
+      isLoadingMore,
+      handleLoadMore,
+      childrenComments,
+      refetchChildrenComments,
+      isChildrenCommentsLoading,
+    ]
   );
 
   if (isAnyLoading || !isDataLoaded) {
@@ -307,7 +325,6 @@ const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
         ItemSeparatorComponent={() => ItemSeparatorComponent}
         ListEmptyComponent={ListEmptyComponent}
         ListFooterComponent={ListFooterComponent}
-        onEndReachedThreshold={0.8}
       />
     </View>
   );

@@ -4,7 +4,7 @@ import { useGetTopConfessions } from "@/hooks/useConfession";
 import { ShowConfessions } from "@/utils/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { EyeIcon } from "lucide-react-native";
+import { EyeIcon, TrophyIcon } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -129,7 +129,9 @@ const TopConfessions = () => {
   if (!topConfessions || topConfessions.length === 0) {
     return (
       <View className="flex-1 items-center justify-center min-h-screen">
-        <Text className="text-lg font-bold">No confessions found</Text>
+        <Text className="text-lg font-bold text-gray-800">
+          No confessions found
+        </Text>
       </View>
     );
   }
@@ -137,8 +139,9 @@ const TopConfessions = () => {
   return (
     <View className="flex-1 bg-white px-4 py-2">
       {/* Header */}
-      <View className="mb-3">
-        <Text className="font-bold text-lg">Top Confessions</Text>
+      <View className="flex-row items-center gap-2 mb-2">
+        <TrophyIcon size={30} color={"#1C1C3A"} />
+        <Text className="font-bold text-lg text-gray-800">Top Confessions</Text>
       </View>
 
       {/* FlatList without flex-1 to prevent it from taking all space */}
@@ -154,7 +157,9 @@ const TopConfessions = () => {
         }}
         ListEmptyComponent={
           <View className="justify-center items-center p-4">
-            <Text className="text-lg font-bold">No confessions found</Text>
+            <Text className="text-lg font-bold text-gray-800">
+              No confessions found
+            </Text>
           </View>
         }
         showsVerticalScrollIndicator={false}

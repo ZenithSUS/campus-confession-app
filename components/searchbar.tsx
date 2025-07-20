@@ -15,7 +15,7 @@ const Searchbar = ({ onSearch }: { onSearch: (query: string) => void }) => {
         <TextInput
           placeholder="Search confessions..."
           placeholderTextColor="#6B7280"
-          className="flex-1 text-sm px-2 py-2 outline-none"
+          className="flex-1 text-sm px-2 py-2 outline-none text-gray-800"
           onChangeText={(query) => onSearch(query)}
         />
       </View>

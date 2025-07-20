@@ -508,9 +508,17 @@ const Confession = () => {
 
       if (item.type === "empty-comment") {
         return (
-          <View className="flex-row items-center mx-4" key="empty-comment">
-            <Notebook size={20} color="#6B7280" />
-            <Text className="font-bold text-lg">No Comments Yet.</Text>
+          <View className="flex-col items-center justify-center min-h-screen">
+            <View className="flex-row items-center mx-4" key="empty-comment">
+              <Notebook size={20} color="#6B7280" />
+              <Text className="font-bold text-lg text-gray-800">
+                No Comments Yet.
+              </Text>
+            </View>
+            <Text className="font-bold text-lg text-gray-800">
+              {" "}
+              Be the first to comment.
+            </Text>
           </View>
         );
       }
@@ -655,7 +663,7 @@ const Confession = () => {
         </View>
 
         <View className="bg-gray-100 px-4 py-3 border-t border-gray-200">
-          <Text className="font-bold mb-2">Leave a comment</Text>
+          <Text className="font-bold mb-2 text-gray-800">Leave a comment</Text>
           <Controller
             control={commentForm.control}
             name="content"
@@ -669,7 +677,8 @@ const Confession = () => {
                       }?`
                     : `Reply to ${state.author}`
                 }
-                className="w-full px-4 py-3 rounded-xl bg-white border border-gray-300"
+                placeholderTextColor="#6B7280"
+                className="w-full px-4 rounded-xl bg-white border border-gray-300"
                 numberOfLines={4}
                 multiline
                 value={value}

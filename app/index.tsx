@@ -208,7 +208,7 @@ const Home = () => {
     if (displayedConfessions.length === 0 && !isFetchingAnyQuery) {
       return (
         <View className="flex-1 items-center justify-center min-h-[400px]">
-          <Text className="font-bold text-lg text-center">
+          <Text className="font-bold text-lg text-center text-gray-800">
             {isSearchMode || debouncedSearchQuery
               ? "No confessions match your search"
               : "No confessions found yet"}
