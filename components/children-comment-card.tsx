@@ -5,7 +5,13 @@ import { timeDifference } from "@/utils/calculate-time";
 import { ShowChildrenComment } from "@/utils/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { Heart } from "lucide-react-native";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -14,6 +20,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
+interface ChildrenCommentsCardProps {
+  commentId: string;
+  isReplyRefreshing: boolean;
+  setIsReplyRefreshing: (refreshing: boolean) => void;
+}
 
 // Component to render a single comment
 const ChildrenCommentItems = ({ item }: { item: ShowChildrenComment }) => {
@@ -123,7 +135,11 @@ const ChildrenCommentItems = ({ item }: { item: ShowChildrenComment }) => {
   );
 };
 
-const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
+const ChildrenCommentCard = ({
+  commentId,
+  isReplyRefreshing,
+  setIsReplyRefreshing,
+}: ChildrenCommentsCardProps) => {
   // Hooks
   const {
     data: childrenComments,
@@ -138,6 +154,16 @@ const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
   const queryClient = useQueryClient();
 
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  useEffect(() => {
+    if (isReplyRefreshing) {
+      onRefresh();
+    }
+
+    return () => {
+      setIsReplyRefreshing(false);
+    };
+  }, [isReplyRefreshing]);
 
   const fetchedReplies = useMemo(() => {
     if (!childrenComments) return [];
@@ -156,7 +182,9 @@ const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
     queryClient.invalidateQueries({
       queryKey: ["childrenComments", commentId],
     });
-    refetchChildrenComments();
+    refetchChildrenComments().finally(() => {
+      setIsReplyRefreshing(false);
+    });
   }, [refetchChildrenComments, commentId]);
 
   const isDataLoaded = useMemo(() => {
@@ -206,7 +234,7 @@ const ChildrenCommentCard = ({ commentId }: { commentId: string }) => {
   // Memoize the list header component
   const ListHeaderComponent = useMemo(
     () => (
-      <Text className="flex-1 text-start font-bold text-lg mb-2 text-gray-500">
+      <Text className="flex-1 text-start font-bold text-lg mb-2 text-gray-800">
         Replies
       </Text>
     ),

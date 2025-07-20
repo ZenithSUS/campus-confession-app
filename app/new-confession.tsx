@@ -15,6 +15,7 @@ import { Controller, useForm } from "react-hook-form";
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -317,7 +318,7 @@ const NewConfession = () => {
   // If loading session, show loading spinner
   if (isSessionLoading || !session) {
     return (
-      <View className="flex-1 justify-center items-center min-h-screen">
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size={"large"} color={"#1C1C3A"} />
       </View>
     );
@@ -325,14 +326,15 @@ const NewConfession = () => {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1"
+      style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
     >
       <ScrollView
-        className="flex-1 bg-white px-2 py-2 flex-col gap-2"
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollViewContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        nestedScrollEnabled={true}
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
         }
@@ -402,7 +404,7 @@ const NewConfession = () => {
                 rules={{ required: true }}
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
-                    className="bg-white px-2 rounded-xl mb-2 text-gray-800"
+                    className="bg-white px-2 py-2 rounded-xl mb-2 text-gray-800"
                     numberOfLines={3}
                     multiline={true}
                     placeholder="Enter your confession to refine with AI..."
@@ -411,6 +413,7 @@ const NewConfession = () => {
                     value={value}
                     editable={!isGenerating}
                     onChangeText={onChange}
+                    textAlignVertical="top"
                   />
                 )}
               />
@@ -430,7 +433,7 @@ const NewConfession = () => {
                 rules={{ required: true }}
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
-                    className="bg-white px-2 rounded-xl mb-2 text-gray-800"
+                    className="bg-white px-2 py-2 rounded-xl mb-2 text-gray-800"
                     numberOfLines={3}
                     value={value}
                     onBlur={onBlur}
@@ -439,6 +442,7 @@ const NewConfession = () => {
                     placeholder="Enter context prompt..."
                     placeholderTextColor={"#6B7280"}
                     multiline={true}
+                    textAlignVertical="top"
                   />
                 )}
               />
@@ -467,11 +471,12 @@ const NewConfession = () => {
                     Refined Result:
                   </Text>
                   <TextInput
-                    className="bg-white px-2 rounded-xl text-gray-800"
+                    className="bg-white px-2 py-2 rounded-xl text-gray-800"
                     numberOfLines={3}
                     multiline={true}
                     placeholder="Refined Confession..."
                     placeholderTextColor={"#6B7280"}
+                    textAlignVertical="top"
                     editable={false}
                     value={refinedConfession}
                   />
@@ -522,7 +527,7 @@ const NewConfession = () => {
                 rules={{ required: true }}
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
-                    className="bg-white px-2 rounded-xl text-gray-800"
+                    className="bg-white px-2 py-2 rounded-xl text-gray-800"
                     numberOfLines={5}
                     multiline={true}
                     placeholder="Your final confession text..."
@@ -531,6 +536,7 @@ const NewConfession = () => {
                     value={value}
                     editable={!isPending}
                     onChangeText={onChange}
+                    textAlignVertical="top"
                   />
                 )}
               />
@@ -649,6 +655,24 @@ const categoryStyle = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    minHeight: Dimensions.get("window").height,
+  },
+  scrollView: {
+    flex: 1,
+    backgroundColor: "#ffffff",
+  },
+  scrollViewContent: {
+    padding: 8,
+    gap: 8,
+    paddingBottom: 20,
+  },
   AIbutton: {
     backgroundColor: "#1C1C3A",
     paddingVertical: 10,

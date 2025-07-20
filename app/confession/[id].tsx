@@ -69,6 +69,7 @@ const Confession = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isReplyRefreshing, setIsReplyRefreshing] = useState(false);
 
   // Mutation hooks
   const { mutateAsync: createComment } = useCreateComment();
@@ -293,6 +294,7 @@ const Confession = () => {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
+      setIsReplyRefreshing(true);
       queryClient.removeQueries({ queryKey: ["confession", id] });
       queryClient.removeQueries({ queryKey: ["comments", id] });
       await Promise.all([
@@ -305,7 +307,12 @@ const Confession = () => {
     } finally {
       setRefreshing(false);
     }
-  }, [refetchConfession, refetchConfessionComments, refreshSession]);
+  }, [
+    refetchConfession,
+    refetchConfessionComments,
+    refreshSession,
+    setIsReplyRefreshing,
+  ]);
 
   // Initialize comment context
   useEffect(() => {
@@ -499,6 +506,8 @@ const Confession = () => {
           <View key={`comment-${item.data?.$id}`} className="mx-4">
             <CommentCard
               comment={item.data}
+              isReplyRefreshing={isReplyRefreshing}
+              setIsReplyRefreshing={setIsReplyRefreshing}
               openReplyId={openReplyId}
               setOpenReplyId={setOpenReplyId}
             />
@@ -678,7 +687,7 @@ const Confession = () => {
                     : `Reply to ${state.author}`
                 }
                 placeholderTextColor="#6B7280"
-                className="w-full px-4 rounded-xl bg-white border border-gray-300"
+                className="w-full px-2 rounded-xl bg-white border border-gray-300 text-gray-800"
                 numberOfLines={4}
                 multiline
                 value={value}

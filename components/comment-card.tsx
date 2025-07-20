@@ -10,12 +10,16 @@ import ChildrenCommentCard from "./children-comment-card";
 
 interface CommentCardProps {
   comment: Comments;
+  isReplyRefreshing: boolean;
+  setIsReplyRefreshing: (refreshing: boolean) => void;
   openReplyId: string | null;
   setOpenReplyId: (id: string | null) => void;
 }
 
 const CommentCard = ({
   comment,
+  isReplyRefreshing,
+  setIsReplyRefreshing,
   openReplyId,
   setOpenReplyId,
 }: CommentCardProps) => {
@@ -200,7 +204,12 @@ const CommentCard = ({
 
       {isShowReply && (
         <View className="flex-col gap-2 p-5">
-          <ChildrenCommentCard key={comment.$id} commentId={comment.$id} />
+          <ChildrenCommentCard
+            key={comment.$id}
+            commentId={comment.$id}
+            isReplyRefreshing={isReplyRefreshing}
+            setIsReplyRefreshing={setIsReplyRefreshing}
+          />
         </View>
       )}
     </View>
