@@ -4,7 +4,7 @@ import { useCreateLikeComment, useDeleteLike } from "@/hooks/useLike";
 import { timeDifference } from "@/utils/calculate-time";
 import { Comments } from "@/utils/types";
 import { Heart, MessageCircle } from "lucide-react-native";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import ChildrenCommentCard from "./children-comment-card";
 
@@ -23,13 +23,33 @@ const CommentCard = ({
   openReplyId,
   setOpenReplyId,
 }: CommentCardProps) => {
+  // Render nothing if there are no comments
+  if (!comment) return null;
+
+  // Hooks
   const { state, dispatch } = useComment();
   const { session } = useSession();
   const { mutateAsync: CreateLike } = useCreateLikeComment();
   const { mutateAsync: DeleteLike } = useDeleteLike();
   const [isLikeProcessing, setIsLikeProcessing] = useState(false);
 
-  const isShowReply = openReplyId === comment.$id;
+  const isShowReply = useMemo(() => {
+    return comment.$id === openReplyId;
+  }, [comment.$id, openReplyId]);
+
+  useEffect(() => {
+    if (isReplyRefreshing) {
+      isShowReply ? setOpenReplyId(comment.$id) : setOpenReplyId(null);
+      setIsReplyRefreshing(false);
+      dispatch({ type: "RESET" });
+      dispatch({ type: "SET_TYPE", payload: "comment" });
+    }
+
+    return () => {
+      dispatch({ type: "RESET" });
+      dispatch({ type: "SET_TYPE", payload: "comment" });
+    };
+  }, [setIsReplyRefreshing]);
 
   const isLiked = useMemo(() => {
     if (!session?.$id || !comment.likesData) return false;
@@ -204,12 +224,7 @@ const CommentCard = ({
 
       {isShowReply && (
         <View className="flex-col gap-2 p-5">
-          <ChildrenCommentCard
-            key={comment.$id}
-            commentId={comment.$id}
-            isReplyRefreshing={isReplyRefreshing}
-            setIsReplyRefreshing={setIsReplyRefreshing}
-          />
+          <ChildrenCommentCard key={comment.$id} commentId={comment.$id} />
         </View>
       )}
     </View>

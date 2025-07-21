@@ -4,7 +4,7 @@ import { useGetTopConfessions } from "@/hooks/useConfession";
 import { ShowConfessions } from "@/utils/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { EyeIcon, TrophyIcon } from "lucide-react-native";
+import { EyeIcon, RefreshCwIcon, TrophyIcon } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -173,14 +173,26 @@ const TopConfessions = () => {
         extraData={topConfessions}
       />
 
-      <View className="p-2 mt-4">
+      <View className=" flex-row px-2 py-4 gap-2 mt-4">
         <Pressable
           onPress={() => router.push("/")}
-          className="flex-row rounded-full py-2 items-center justify-center gap-2"
+          className="flex-1 flex-row rounded-full px-4 py-2 items-center justify-center gap-2"
           style={{ backgroundColor: "#1C1C3A" }}
         >
           <EyeIcon size={18} color="#fff" />
           <Text className="text-white font-semibold">View All</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={onRefresh}
+          className="flex-row justify-center items-center px-4 py-2 rounded-full"
+          style={{
+            backgroundColor: "#1C1C3A",
+            minHeight: 44,
+            minWidth: 100,
+          }}
+        >
+          <RefreshCwIcon size={24} color={"#fff"} />
         </Pressable>
       </View>
     </View>

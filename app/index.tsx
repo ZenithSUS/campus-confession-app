@@ -9,7 +9,7 @@ import {
 import { ShowConfessions } from "@/utils/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { Feather } from "lucide-react-native";
+import { Feather, RefreshCwIcon } from "lucide-react-native";
 import React, {
   useCallback,
   useEffect,
@@ -342,14 +342,26 @@ const Home = () => {
         extraData={`${isSearchMode}-${filterCategory}-${displayedConfessions.length}`}
       />
 
-      <View className="p-2 mt-4">
+      <View className="flex-row px-2 py-2 gap-2 mt-4">
         <Pressable
-          className="flex-row items-center justify-center px-4 py-2 rounded-full gap-2"
+          className="flex-1 flex-row items-center justify-center px-4 py-2 rounded-full gap-2"
           style={{ backgroundColor: "#1C1C3A" }}
           onPress={() => router.push("/new-confession")}
         >
           <Feather size={24} color={"#fff"} />
           <Text className="text-white font-semibold ml-2">New Confession</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={onRefresh}
+          className="flex-row justify-center items-center px-4 py-2 rounded-full"
+          style={{
+            backgroundColor: "#1C1C3A",
+            minHeight: 44,
+            minWidth: 100,
+          }}
+        >
+          <RefreshCwIcon size={24} color={"#fff"} />
         </Pressable>
       </View>
     </View>

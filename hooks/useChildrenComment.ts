@@ -111,8 +111,8 @@ export const useGetChildrenCommentsPagination = (
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage, allPages) => {
-      if (lastPage.length < 5) return undefined;
-      return allPages.length + 1;
+      const hasMoreData = lastPage && lastPage.length >= 5;
+      return hasMoreData ? allPages.length + 1 : undefined;
     },
     retry: (failedCount, error) => {
       if (error instanceof Error) {

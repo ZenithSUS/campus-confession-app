@@ -292,11 +292,13 @@ const Confession = () => {
 
   // Refresh handler
   const onRefresh = useCallback(async () => {
-    setRefreshing(true);
     try {
+      setRefreshing(true);
       setIsReplyRefreshing(true);
+      // Remove all queries related to the confession
       queryClient.removeQueries({ queryKey: ["confession", id] });
       queryClient.removeQueries({ queryKey: ["comments", id] });
+      queryClient.removeQueries({ queryKey: ["childrenComments"] });
       await Promise.all([
         refetchConfession(),
         refetchConfessionComments(),
@@ -687,7 +689,7 @@ const Confession = () => {
                     : `Reply to ${state.author}`
                 }
                 placeholderTextColor="#6B7280"
-                className="w-full px-2 rounded-xl bg-white border border-gray-300 text-gray-800"
+                className="w-full px-2 py-2 rounded-xl bg-white border border-gray-300 text-gray-800"
                 numberOfLines={4}
                 multiline
                 value={value}

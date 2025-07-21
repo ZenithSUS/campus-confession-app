@@ -5,13 +5,7 @@ import { timeDifference } from "@/utils/calculate-time";
 import { ShowChildrenComment } from "@/utils/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { Heart } from "lucide-react-native";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -23,8 +17,6 @@ import {
 
 interface ChildrenCommentsCardProps {
   commentId: string;
-  isReplyRefreshing: boolean;
-  setIsReplyRefreshing: (refreshing: boolean) => void;
 }
 
 // Component to render a single comment
@@ -135,11 +127,10 @@ const ChildrenCommentItems = ({ item }: { item: ShowChildrenComment }) => {
   );
 };
 
-const ChildrenCommentCard = ({
-  commentId,
-  isReplyRefreshing,
-  setIsReplyRefreshing,
-}: ChildrenCommentsCardProps) => {
+const ChildrenCommentCard = ({ commentId }: ChildrenCommentsCardProps) => {
+  // Return nothing if there are no comments
+  if (!commentId) return null;
+
   // Hooks
   const {
     data: childrenComments,
@@ -154,16 +145,6 @@ const ChildrenCommentCard = ({
   const queryClient = useQueryClient();
 
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-
-  useEffect(() => {
-    if (isReplyRefreshing) {
-      onRefresh();
-    }
-
-    return () => {
-      setIsReplyRefreshing(false);
-    };
-  }, [isReplyRefreshing]);
 
   const fetchedReplies = useMemo(() => {
     if (!childrenComments) return [];
@@ -182,9 +163,7 @@ const ChildrenCommentCard = ({
     queryClient.invalidateQueries({
       queryKey: ["childrenComments", commentId],
     });
-    refetchChildrenComments().finally(() => {
-      setIsReplyRefreshing(false);
-    });
+    refetchChildrenComments();
   }, [refetchChildrenComments, commentId]);
 
   const isDataLoaded = useMemo(() => {
