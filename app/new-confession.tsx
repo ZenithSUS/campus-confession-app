@@ -156,9 +156,6 @@ const NewConfession = () => {
 
   // Submit confession
   const submitConfession = async (data: NewConfession) => {
-    console.log("Submitting confession:", data);
-    console.log("Form errors:", postForm.formState.errors);
-
     // Check cooldown before submitting
     if (isInCooldown) {
       Alert.alert(
@@ -182,8 +179,6 @@ const NewConfession = () => {
 
       // Don't include the inputTag field in the final data
       const { inputTag, ...finalData } = data;
-
-      console.log("Final data being sent:", finalData);
 
       await createConfession(finalData);
       queryClient.invalidateQueries({ queryKey: ["confessions"] });
@@ -220,8 +215,6 @@ const NewConfession = () => {
 
   // Refine confession
   const handleRefine = async (data: RefineConfession) => {
-    console.log("Refining confession:", data);
-
     try {
       setApiError(null);
       setIsGenerating(true);
@@ -256,8 +249,6 @@ const NewConfession = () => {
 
   // Generate Tags for confession
   const handleGenerateTags = async () => {
-    console.log("Generating tags for:", postForm.getValues("text"));
-
     try {
       setApiError(null);
 

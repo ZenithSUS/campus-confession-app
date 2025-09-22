@@ -5,7 +5,6 @@ export const createLike = (data: CreateLike, signal?: AbortSignal) => {
   try {
     return axiosClient.post("/likes", data, { signal, timeout: 10000 });
   } catch (error) {
-    console.error("API Error:", error);
     throw error;
   }
 };
@@ -17,7 +16,6 @@ export const getLikesByConfession = (id: string, signal?: AbortSignal) => {
       timeout: 10000,
     });
   } catch (error) {
-    console.error("API Error:", error);
     throw error;
   }
 };
@@ -32,7 +30,6 @@ export const deleteLike = (id: string, signal?: AbortSignal) => {
   try {
     return axiosClient.delete(`/likes/${id}`, { signal, timeout: 10000 });
   } catch (error) {
-    console.error("API Error:", error);
     throw error;
   }
 };
@@ -41,7 +38,6 @@ export const getLikes = () => {
   try {
     return axiosClient.get("/likes");
   } catch (error) {
-    console.error("API Error:", error);
     throw error;
   }
 };
